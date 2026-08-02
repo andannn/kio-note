@@ -1,9 +1,11 @@
 package kio.note.components
 
-import kio.note.domain.Note
+import kio.note.domain.model.Note
 import kio.note.util.hxConfirm
 import kio.note.util.hxDelete
+import kio.note.util.hxGet
 import kio.note.util.hxOnAfterRequest
+import kio.note.util.hxPatch
 import kio.note.util.hxPost
 import kio.note.util.hxSwap
 import kio.note.util.hxTarget
@@ -43,6 +45,11 @@ fun FlowContent.noteCard(note: Note) {
                 type = ButtonType.button,
                 classes = "button button--secondary",
             ) {
+
+                hxGet = "/notes/${note.id}/edit"
+                hxTarget = "closest article"
+                hxSwap = "outerHTML"
+
                 +"Edit"
             }
 
@@ -61,7 +68,7 @@ fun FlowContent.noteCard(note: Note) {
     }
 }
 
-fun FlowContent.noteForm() {
+fun FlowContent.noteTopForm() {
     form(classes = "note-form") {
         hxPost = "/notes"
         hxTarget = "#note-list"
@@ -102,6 +109,65 @@ fun FlowContent.noteForm() {
                 classes = "button button--primary",
             ) {
                 +"Add note"
+            }
+        }
+    }
+}
+
+fun FlowContent.noteEditForm(note: Note) {
+    form(classes = "note-form note-form--inline") {
+        id = "note-${note.id}"
+
+        hxPatch = "/notes/${note.id}"
+        hxTarget = "this"
+        hxSwap = "outerHTML"
+
+        div(classes = "form-field") {
+            label {
+                htmlFor = "note-title-${note.id}"
+                +"Title"
+            }
+
+            textInput {
+                id = "note-title-${note.id}"
+                name = "title"
+                value = note.title
+                required = true
+            }
+        }
+
+        div(classes = "form-field") {
+            label {
+                htmlFor = "note-content-${note.id}"
+                +"Content"
+            }
+
+            textArea {
+                id = "note-content-${note.id}"
+                name = "content"
+                rows = "6"
+
+                +note.content
+            }
+        }
+
+        div(classes = "note-form__actions") {
+            button(
+                type = ButtonType.submit,
+                classes = "button button--primary",
+            ) {
+                +"Save"
+            }
+
+            button(
+                type = ButtonType.button,
+                classes = "button button--secondary",
+            ) {
+                hxGet = "/notes/${note.id}"
+                hxTarget = "closest form"
+                hxSwap = "outerHTML"
+
+                +"Cancel"
             }
         }
     }

@@ -1,4 +1,4 @@
-package kio.note.domain
+package kio.note.domain.model
 
 data class Note(
     val id: Long,
