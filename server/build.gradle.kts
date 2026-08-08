@@ -10,6 +10,9 @@ kotlin {
     }
 
     sourceSets {
+        compilerOptions {
+            freeCompilerArgs.set(listOf("-Xcontext-parameters"))
+        }
         jvmMain.dependencies {
             implementation(libs.kio.poller.select)
         }

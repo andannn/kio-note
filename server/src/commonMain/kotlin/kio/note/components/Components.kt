@@ -1,17 +1,15 @@
 package kio.note.components
 
-import kio.note.domain.model.Note
-import kio.note.util.hxConfirm
-import kio.note.util.hxDelete
+import kio.note.domain.Note
+import kio.note.domain.NoteBlock
 import kio.note.util.hxGet
-import kio.note.util.hxOnAfterRequest
-import kio.note.util.hxPatch
 import kio.note.util.hxPost
 import kio.note.util.hxSwap
 import kio.note.util.hxTarget
+import kio.note.util.hxTrigger
 import kotlinx.html.*
 
-fun FlowContent.noteList(notes: List<Note>) {
+fun TagConsumer<*>.noteList(notes: List<Note>) {
     section {
         id = "note-list"
         classes = setOf("note-list")
@@ -21,154 +19,188 @@ fun FlowContent.noteList(notes: List<Note>) {
                 +"No notes yet."
             }
         } else {
-            notes.forEach { note ->
-                noteCard(note)
+            ul {
+                notes.forEach { note ->
+                    li {
+                        noteItem(note)
+                    }
+                }
             }
         }
     }
 }
 
-fun FlowContent.noteCard(note: Note) {
-    article(classes = "note-card") {
-        id = "note-${note.id}"
+private fun TagConsumer<*>.noteItem(note: Note) {
+    button {
+        hxGet = "/notes/${note.id}"
+        hxTarget = "#note-content"
+        hxSwap = "innerHTML"
 
-        h2(classes = "note-card__title") {
+        +note.title
+    }
+}
+
+fun TagConsumer<*>.noteContent(note: Note) {
+    article {
+        h1 {
             +note.title
         }
-
-        p(classes = "note-card__content") {
-            +note.content
-        }
-
-        div(classes = "note-card__actions") {
-            button(
-                type = ButtonType.button,
-                classes = "button button--secondary",
-            ) {
-
-                hxGet = "/notes/${note.id}/edit"
-                hxTarget = "closest article"
-                hxSwap = "outerHTML"
-
-                +"Edit"
-            }
-
-            button(
-                type = ButtonType.button,
-                classes = "button button--danger",
-            ) {
-                hxDelete = "/notes/${note.id}"
-                hxSwap = "delete"
-                hxTarget = "#note-${note.id}"
-                hxConfirm = "Delete this note?"
-
-                +"Delete"
-            }
+        note.blocks.forEach { block ->
+            noteBlock(note.id, block)
         }
     }
 }
 
-fun FlowContent.noteTopForm() {
-    form(classes = "note-form") {
-        hxPost = "/notes"
-        hxTarget = "#note-list"
-        hxSwap = "beforeend"
-        hxOnAfterRequest = "if (event.detail.successful) this.reset()"
-
-        div(classes = "form-field") {
-            label {
-                htmlFor = "note-title"
-                +"Title"
+fun TagConsumer<*>.noteBlock(noteId: Long, block: NoteBlock, isNewAdded: Boolean = false) {
+    div {
+        val blockContainerId = "block-${block.blockId}"
+        id = blockContainerId
+        when (block) {
+            is NoteBlock.Text -> {
+                textNoteBlock(blockContainerId, noteId, block, isNewAdded)
             }
 
-            textInput {
-                id = "note-title"
-                name = "title"
-                placeholder = "Note title"
-                required = true
+            is NoteBlock.Image -> {
+                imageNoteBlock(noteId, block)
             }
         }
 
-        div(classes = "form-field") {
-            label {
-                htmlFor = "note-content"
-                +"Content"
-            }
+        addBlockMenu(blockContainerId, noteId, block.blockId)
+    }
+}
 
-            textArea {
-                id = "note-content"
-                name = "content"
-                placeholder = "Write something..."
-                rows = "6"
-            }
+
+private fun TagConsumer<*>.imageNoteBlock(noteId: Long, block: NoteBlock.Image) {
+    if (block.url == null) {
+        input {
+            type = InputType.file
+            name = "image"
+            accept = "image/*"
+
+            hxPost = "/notes/$noteId/blocks/${block.blockId}/image"
+            hxTrigger = "change"
+            hxTarget = "#block-${block.blockId}"
+            hxSwap = "outerHTML"
+
+            attributes["hx-encoding"] = "multipart/form-data"
         }
+    } else {
+        img(
+            src = block.url,
+            alt = block.alt,
+        )
+    }
+}
 
-        div(classes = "note-form__actions") {
-            button(
-                type = ButtonType.submit,
-                classes = "button button--primary",
-            ) {
-                +"Add note"
-            }
+private fun TagConsumer<*>.textNoteBlock(
+    blockContainerId: String,
+    noteId: Long,
+    block: NoteBlock.Text,
+    autoFocus: Boolean = false,
+) {
+    p {
+        val textAreaId = "block-input-${block.blockId}"
+
+        textArea {
+            id = textAreaId
+            this.autoFocus = autoFocus
+            name = "text"
+            hxPost = "/notes/$noteId/blocks/${block.blockId}/text"
+            hxTrigger = "input changed delay:1s"
+            hxSwap = "none"
+
+            attributes["hx-on:keydown"] = """
+                if (event.key === 'Backspace' && this.value === '') {
+                    event.preventDefault()
+                    console.log(event.key)
+                    
+                    const currentBlock = document.querySelector('#$blockContainerId')
+                    const previousBlock = currentBlock.previousElementSibling
+
+                   htmx.ajax(
+                        'DELETE',
+                        '/notes/$noteId/blocks/${block.blockId}',
+                        {
+                            target: '#$blockContainerId',
+                            swap: 'delete'
+                        }
+                    ).then(() => {
+                        previousBlock?.querySelector('textarea')?.focus()
+                    })
+                }
+
+                if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault()
+                    htmx.ajax(
+                        'POST',
+                        '/notes/$noteId/blocks/${block.blockId}/after?type=text',
+                        {
+                            target: '#$blockContainerId',
+                            swap: 'afterend'
+                        }
+                    )
+                }
+
+                if (
+                    event.key === 'ArrowUp' &&
+                    this.selectionStart === 0
+                ) {
+                    const currentBlock = document.querySelector('#$blockContainerId')
+                    const previousInput =
+                        currentBlock.previousElementSibling?.querySelector('textarea')
+            
+                    if (previousInput) {
+                        event.preventDefault()
+                        previousInput.focus()
+                        previousInput.selectionStart = previousInput.value.length
+                        previousInput.selectionEnd = previousInput.value.length
+                    }
+                }
+            
+                if (
+                    event.key === 'ArrowDown' &&
+                    this.selectionStart === this.value.length
+                ) {
+                    const currentBlock = document.querySelector('#$blockContainerId')
+                    const nextInput =
+                        currentBlock.nextElementSibling?.querySelector('textarea')
+            
+                    if (nextInput) {
+                        event.preventDefault()
+                        nextInput.focus()
+                        nextInput.selectionStart = 0
+                        nextInput.selectionEnd = 0
+                    }
+                }
+            """.trimIndent()
+
+            +block.text
         }
     }
 }
 
-fun FlowContent.noteEditForm(note: Note) {
-    form(classes = "note-form note-form--inline") {
-        id = "note-${note.id}"
-
-        hxPatch = "/notes/${note.id}"
-        hxTarget = "this"
-        hxSwap = "outerHTML"
-
-        div(classes = "form-field") {
-            label {
-                htmlFor = "note-title-${note.id}"
-                +"Title"
-            }
-
-            textInput {
-                id = "note-title-${note.id}"
-                name = "title"
-                value = note.title
-                required = true
-            }
+private fun TagConsumer<*>.addBlockMenu(
+    blockContainerId: String,
+    noteId: Long,
+    blockId: Long
+) {
+    details {
+        summary {
+            +"+"
         }
 
-        div(classes = "form-field") {
-            label {
-                htmlFor = "note-content-${note.id}"
-                +"Content"
-            }
-
-            textArea {
-                id = "note-content-${note.id}"
-                name = "content"
-                rows = "6"
-
-                +note.content
-            }
+        button {
+            hxPost = "/notes/$noteId/blocks/${blockId}/after?type=text"
+            hxTarget = "#$blockContainerId"
+            hxSwap = "afterend"
+            +"Text"
         }
 
-        div(classes = "note-form__actions") {
-            button(
-                type = ButtonType.submit,
-                classes = "button button--primary",
-            ) {
-                +"Save"
-            }
-
-            button(
-                type = ButtonType.button,
-                classes = "button button--secondary",
-            ) {
-                hxGet = "/notes/${note.id}"
-                hxTarget = "closest form"
-                hxSwap = "outerHTML"
-
-                +"Cancel"
-            }
+        button {
+            hxPost = "/notes/$noteId/blocks/${blockId}/after?type=image"
+            hxTarget = "#$blockContainerId"
+            hxSwap = "afterend"
+            +"Image"
         }
     }
 }

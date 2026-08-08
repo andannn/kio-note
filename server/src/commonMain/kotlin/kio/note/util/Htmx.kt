@@ -14,6 +14,12 @@ var Tag.hxPost: String
         attributes["hx-post"] = value
     }
 
+var Tag.hxTrigger: String
+    get() = attributes["hx-trigger"].orEmpty()
+    set(value) {
+        attributes["hx-trigger"] = value
+    }
+
 var Tag.hxDelete: String
     get() = attributes["hx-delete"].orEmpty()
     set(value) {

@@ -1,72 +1,87 @@
 package kio.note
 
 import io.ktor.http.HttpStatusCode
+import kio.async.readString
 import kio.http.CallContext
 import kio.http.Route
 import kio.http.delete
 import kio.http.get
-import kio.http.patch
 import kio.http.post
-import kio.http.receiveFormParameters
 import kio.http.respond
 import kio.http.respondHtml
 import kio.http.route
-import kio.note.components.*
-import kio.note.domain.model.Note
-import kotlinx.html.*
+import kio.note.components.noteBlock
+import kio.note.components.noteContent
+import kio.note.domain.BlockType
+import kio.note.domain.Repository
 
+context(_: Repository)
 fun Route.notesRoute() {
     route("/notes") {
-        post { call -> call.handleAddNotes() }
-        get("/{id}") { call -> call.handleGetNote() }
-        patch("/{id}") { call -> call.handlePatchNote() }
-        delete("/{id}") { call -> call.handleDeleteNotes() }
-        get("/{id}/edit") { call -> call.handleEditNote() }
-    }
-}
+        route("/{id}") {
+            get { call -> call.handleGetNote() }
 
-internal val notes = mutableListOf(
-    Note(
-        id = 1,
-        title = "Hello",
-        content = "Learn Htmx",
-    ),
-    Note(
-        id = 2,
-        title = "Learn HTML",
-        content = "Today I learned HTML components.",
-    ),
-)
-
-private var nextNoteId = 3L
-
-private suspend fun CallContext.handlePatchNote() {
-    val id = parameters["id"]?.toLongOrNull()
-    if (id == null) {
-        respond(HttpStatusCode.BadRequest)
-        return
-    }
-    val noteIndex = notes.indexOfFirst { it.id == id }
-    if (noteIndex == -1) {
-        respond(HttpStatusCode.NotFound)
-        return
-    }
-
-    val formParameter = receiveFormParameters()
-    val title = formParameter["title"].orEmpty()
-    val content = formParameter["content"].orEmpty()
-
-    val oldNote = notes.removeAt(noteIndex)
-    val newNote = oldNote.copy(title = title, content = content)
-    notes.add(noteIndex, newNote)
-
-    respondHtml {
-        section {
-            noteCard(newNote)
+            route("blocks/{blockId}") {
+                delete { call -> call.handleDeleteBlock() }
+                post("text") { call -> call.handleChangeTextBlock() }
+                post("image") { call -> call.handleUploadImageBlock() }
+                post("/after") { call -> call.handleAddBlockAfter() }
+            }
         }
     }
 }
 
+context(repo: Repository)
+private suspend fun CallContext.handleDeleteBlock() {
+    val noteId = parameters["id"]?.toLongOrNull()
+    val noteBlockId = parameters["blockId"]?.toLongOrNull()
+    if (noteId == null || noteBlockId == null) {
+        respond(HttpStatusCode.BadRequest)
+        return
+    }
+
+    repo.deleteBlock(noteId, noteBlockId)
+    respond(HttpStatusCode.OK)
+}
+
+context(repo: Repository)
+private suspend fun CallContext.handleUploadImageBlock() {
+    respond(HttpStatusCode.OK)
+}
+
+context(repo: Repository)
+private suspend fun CallContext.handleChangeTextBlock() {
+    respond(HttpStatusCode.OK)
+}
+
+context(repo: Repository)
+private suspend fun CallContext.handleAddBlockAfter() {
+    val type = parameters["type"]
+    val noteId = parameters["id"]?.toLongOrNull()
+    val noteBlockId = parameters["blockId"]?.toLongOrNull()
+    if (type == null || noteId == null || noteBlockId == null) {
+        respond(HttpStatusCode.BadRequest)
+        return
+    }
+
+    val blockType = BlockType.parse(type)
+    if (blockType == null) {
+        respond(HttpStatusCode.BadRequest)
+        return
+    }
+
+    val newBlock = repo.addBlockAfter(noteId, noteBlockId, blockType)
+    if (newBlock == null) {
+        respond(HttpStatusCode.NotFound)
+        return
+    }
+
+    respondHtml {
+        noteBlock(noteId, newBlock, isNewAdded = true)
+    }
+}
+
+context(repo: Repository)
 private suspend fun CallContext.handleGetNote() {
     val id = parameters["id"]?.toLongOrNull()
     if (id == null) {
@@ -74,79 +89,13 @@ private suspend fun CallContext.handleGetNote() {
         return
     }
 
-    val note = notes.firstOrNull { it.id == id }
+    val note = repo.getNoteById(id)
     if (note == null) {
         respond(HttpStatusCode.NotFound)
         return
     }
 
     respondHtml {
-        section {
-            noteCard(note)
-        }
+        noteContent(note)
     }
 }
-
-private suspend fun CallContext.handleDeleteNotes() {
-    val deleteId = parameters["id"]?.toLongOrNull()
-    if (deleteId == null) {
-        respond(HttpStatusCode.BadRequest)
-        return
-    }
-
-    val removed = notes.removeIf { it.id == deleteId }
-
-    if (!removed) {
-        respond(HttpStatusCode.NotFound)
-        return
-    }
-
-    respond(HttpStatusCode.OK)
-}
-
-private suspend fun CallContext.handleAddNotes() {
-    val formParameter = receiveFormParameters()
-    val title = formParameter["title"].orEmpty()
-    val content = formParameter["content"].orEmpty()
-    if (title.isBlank()) {
-        respondHtml {
-            p(classes = "form-error") {
-                +"Title is required."
-            }
-        }
-        return
-    }
-
-    val note = Note(
-        id = nextNoteId++,
-        title = title,
-        content = content,
-    )
-    notes += note
-    respondHtml {
-        section {
-            noteCard(note)
-        }
-    }
-}
-
-private suspend fun CallContext.handleEditNote() {
-    val editId = parameters["id"]?.toLongOrNull()
-    if (editId == null) {
-        respond(HttpStatusCode.BadRequest)
-        return
-    }
-
-    val editNote = notes.firstOrNull { it.id == editId }
-    if (editNote == null) {
-        respond(HttpStatusCode.NotFound)
-        return
-    }
-
-    respondHtml {
-        section {
-            noteEditForm(editNote)
-        }
-    }
-}
-

@@ -3,19 +3,13 @@ package kio.note.page
 import kio.http.CallContext
 import kio.http.respondHtml
 import kio.note.components.noteList
-import kio.note.components.noteTopForm
-import kio.note.domain.model.Note
+import kio.note.domain.Repository
 import kio.note.util.Resource
-import kotlinx.html.body
-import kotlinx.html.footer
-import kotlinx.html.h1
-import kotlinx.html.head
-import kotlinx.html.link
-import kotlinx.html.main
-import kotlinx.html.script
-import kotlinx.html.title
+import kotlinx.html.*
 
-suspend fun CallContext.noteMainPage(notes: List<Note>) {
+context(repository: Repository)
+suspend fun CallContext.noteMainPage() {
+    val notes = repository.getAllNoteMetaData()
     respondHtml {
         head {
             script(src = Resource.HTMX_MIN_JS) { }
@@ -24,10 +18,19 @@ suspend fun CallContext.noteMainPage(notes: List<Note>) {
         }
 
         body {
-            main(classes = "page") {
+            style = "display: flex; min-height: 100vh;"
+            aside {
+                style = "width: 280px;"
+
                 h1 { +"Knote" }
-                noteTopForm()
                 noteList(notes)
+            }
+
+            main(classes = "page") {
+                style = "flex: 1;"
+                id = "note-content"
+
+                p { +"Select a note" }
             }
         }
         footer { }
