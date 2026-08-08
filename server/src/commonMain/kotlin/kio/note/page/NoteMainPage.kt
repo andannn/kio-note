@@ -4,7 +4,7 @@ import kio.http.CallContext
 import kio.http.respondHtml
 import kio.note.components.noteList
 import kio.note.domain.Repository
-import kio.note.util.Resource
+import kio.note.util.Config
 import kotlinx.html.*
 
 context(repository: Repository)
@@ -12,8 +12,8 @@ suspend fun CallContext.noteMainPage() {
     val notes = repository.getAllNoteMetaData()
     respondHtml {
         head {
-            script(src = Resource.HTMX_MIN_JS) { }
-            link(rel = "stylesheet", href = Resource.APP_CSS)
+            script(src = Config.HTMX_MIN_JS) { }
+            link(rel = "stylesheet", href = Config.APP_CSS)
             title { +"Knote" }
         }
 

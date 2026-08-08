@@ -13,6 +13,7 @@ suspend fun noteServer(serverSocket: ServerSocket) {
         httpServer(serverSocket) {
             get("/") { call -> call.noteMainPage() }
             notesRoute()
+            staticResource("/attachments", "data/uploads")
             staticResource("/", "resource")
         }
     }

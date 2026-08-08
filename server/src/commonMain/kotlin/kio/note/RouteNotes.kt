@@ -1,12 +1,13 @@
 package kio.note
 
 import io.ktor.http.HttpStatusCode
-import kio.async.readString
+import kio.async.AsyncRawSource
 import kio.http.CallContext
 import kio.http.Route
 import kio.http.delete
 import kio.http.get
 import kio.http.post
+import kio.http.receiveMultipart
 import kio.http.respond
 import kio.http.respondHtml
 import kio.http.route
@@ -46,7 +47,37 @@ private suspend fun CallContext.handleDeleteBlock() {
 
 context(repo: Repository)
 private suspend fun CallContext.handleUploadImageBlock() {
-    respond(HttpStatusCode.OK)
+    val noteId = parameters["id"]?.toLongOrNull()
+    val noteBlockId = parameters["blockId"]?.toLongOrNull()
+    if (noteId == null || noteBlockId == null) {
+        respond(HttpStatusCode.BadRequest)
+        return
+    }
+
+    val reader = receiveMultipart()
+    var imageFileSource : AsyncRawSource? = null
+    while (true) {
+        val part = reader.nextPart() ?: break
+        if (part.contentDisposition?.name == "image") {
+            imageFileSource = part.body
+            break
+        }
+    }
+
+    if (imageFileSource == null) {
+        respond(HttpStatusCode.BadRequest)
+        return
+    }
+    val image = repo.saveImageToImageBlock(noteId, noteBlockId, imageFileSource)
+
+    if (image == null) {
+        respond(HttpStatusCode.BadRequest)
+        return
+    }
+
+    respondHtml {
+        noteBlock(noteId, image, isNewAdded = true)
+    }
 }
 
 context(repo: Repository)
