@@ -2,6 +2,7 @@ package kio.note.components
 
 import kio.note.domain.Note
 import kio.note.domain.NoteBlock
+import kio.note.util.hxDelete
 import kio.note.util.hxGet
 import kio.note.util.hxPost
 import kio.note.util.hxSwap
@@ -61,7 +62,7 @@ fun TagConsumer<*>.noteBlock(noteId: Long, block: NoteBlock, isNewAdded: Boolean
             }
 
             is NoteBlock.Image -> {
-                imageNoteBlock(noteId, block)
+                imageNoteBlock(blockContainerId, noteId, block)
             }
         }
 
@@ -70,7 +71,7 @@ fun TagConsumer<*>.noteBlock(noteId: Long, block: NoteBlock, isNewAdded: Boolean
 }
 
 
-private fun TagConsumer<*>.imageNoteBlock(noteId: Long, block: NoteBlock.Image) {
+private fun TagConsumer<*>.imageNoteBlock(blockContainerId: String, noteId: Long, block: NoteBlock.Image) {
     if (block.url == null) {
         input {
             type = InputType.file
@@ -89,6 +90,27 @@ private fun TagConsumer<*>.imageNoteBlock(noteId: Long, block: NoteBlock.Image) 
             src = block.url,
             alt = block.alt,
         )
+
+        input {
+            type = InputType.file
+            name = "image"
+            accept = "image/*"
+
+            hxPost = "/notes/$noteId/blocks/${block.blockId}/image"
+            hxTrigger = "change"
+            hxTarget = "#$blockContainerId"
+            hxSwap = "outerHTML"
+
+            attributes["hx-encoding"] = "multipart/form-data"
+        }
+
+        button {
+            hxDelete = "/notes/$noteId/blocks/${block.blockId}"
+            hxTarget = "#$blockContainerId"
+            hxSwap = "delete"
+
+            +"Delete block"
+        }
     }
 }
 

@@ -3,7 +3,8 @@ package kio.note.domain
 import kio.async.AsyncRawSource
 import kio.note.util.Config
 import kio.note.util.saveFileToPath
-import kotlin.io.path.Path
+import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
 import kotlin.uuid.Uuid
 
 enum class BlockType {
@@ -100,6 +101,12 @@ private class MockRepositoryImpl: Repository {
         val blockIndex = note.blocks.indexOfFirst { it.blockId == noteBlockId }
         if (blockIndex == -1) return
 
+        val block = note.blocks[blockIndex]
+        if (block is NoteBlock.Image && block.url != null) {
+            val oldPath = Path(Config.UPLOAD_DIR, block.url.substringAfterLast("/"))
+            SystemFileSystem.delete(oldPath)
+        }
+
         note.blocks.removeAt(blockIndex)
     }
 
@@ -117,6 +124,14 @@ private class MockRepositoryImpl: Repository {
         val filePath = Path(Config.UPLOAD_DIR, uuid).toString()
         fileSource.saveFileToPath(filePath)
 
-        return oldBlock.copy(url = "/attachments/$uuid")
+        if (oldBlock.url != null) {
+            val oldPath = Path(Config.UPLOAD_DIR, oldBlock.url.substringAfterLast("/"))
+            SystemFileSystem.delete(oldPath)
+        }
+
+        val newBlock = oldBlock.copy(url = "/attachments/$uuid")
+        note.blocks.removeAt(noteBlockIndex)
+        note.blocks.add(noteBlockIndex, newBlock    )
+        return newBlock
     }
 }
