@@ -7,6 +7,7 @@ import kio.postgres.conn.PgConnection
 import kio.postgres.conn.openPgConnection
 import kotlinx.coroutines.withTimeout
 import kotlin.test.Test
+import kotlin.test.assertNotNull
 import kotlin.time.Duration.Companion.seconds
 
 abstract class DatabaseTest {
@@ -14,7 +15,7 @@ abstract class DatabaseTest {
 
     @Test
     fun smokeTest() = withTestPgDatabase {
-        println(doSelectQuery())
+        assertNotNull(createNote("new note"))
     }
 
     fun withTestPgDatabase(
@@ -35,6 +36,7 @@ abstract class DatabaseTest {
                     password = password,
                     database = database,
                 )
+                conn.initDb(isTest = true)
                 conn.block()
                 conn.close()
             }
