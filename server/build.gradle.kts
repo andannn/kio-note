@@ -18,7 +18,11 @@ kotlin {
         }
         commonMain.dependencies {
             implementation(libs.kio.http)
+            implementation(libs.kio.postgres.connection)
             implementation(libs.kio.io)
+        }
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
         }
     }
 }

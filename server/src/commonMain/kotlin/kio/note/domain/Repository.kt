@@ -3,6 +3,7 @@ package kio.note.domain
 import kio.async.AsyncRawSource
 import kio.note.util.Config
 import kio.note.util.saveFileToPath
+import kio.postgres.conn.PgConnectionPool
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlin.uuid.Uuid
@@ -38,7 +39,7 @@ sealed interface NoteBlock {
     ) : NoteBlock
 }
 
-fun Repository() : Repository = MockRepositoryImpl()
+fun Repository(pgPool: PgConnectionPool) : Repository = RepositoryImpl(pgPool)
 
 interface Repository {
     suspend fun getAllNoteMetaData(): List<Note>
@@ -48,7 +49,40 @@ interface Repository {
     suspend fun saveImageToImageBlock(noteId: Long, noteBlockId: Long, fileSource: AsyncRawSource): NoteBlock.Image?
 }
 
-private class MockRepositoryImpl: Repository {
+private class RepositoryImpl(
+    pgPool: PgConnectionPool,
+): Repository {
+    override suspend fun getAllNoteMetaData(): List<Note> {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun getNoteById(id: Long): Note? {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun addBlockAfter(
+        noteId: Long,
+        blockId: Long,
+        type: BlockType
+    ): NoteBlock? {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun deleteBlock(noteId: Long, noteBlockId: Long) {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun saveImageToImageBlock(
+        noteId: Long,
+        noteBlockId: Long,
+        fileSource: AsyncRawSource
+    ): NoteBlock.Image? {
+        TODO("Not yet implemented")
+    }
+
+}
+
+class MockRepositoryImpl: Repository {
     private val notes = mutableListOf(
         Note(
             id = 1,

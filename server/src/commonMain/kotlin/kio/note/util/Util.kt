@@ -6,6 +6,8 @@ import kio.async.io.openFileSink
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 
+expect fun getEnv(key: String): String?
+
 suspend fun AsyncRawSource.saveFileToPath(path: String) {
     val filePath = Path(path)
 

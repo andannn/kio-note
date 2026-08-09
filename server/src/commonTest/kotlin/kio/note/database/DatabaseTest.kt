@@ -1,0 +1,43 @@
+package kio.note.database
+
+import kio.async.PollerFactory
+import kio.async.runPollEventLoop
+import kio.note.util.getEnv
+import kio.postgres.conn.PgConnection
+import kio.postgres.conn.openPgConnection
+import kotlinx.coroutines.withTimeout
+import kotlin.test.Test
+import kotlin.time.Duration.Companion.seconds
+
+abstract class DatabaseTest {
+    abstract val pollerFactory: PollerFactory
+
+    @Test
+    fun smokeTest() = withTestPgDatabase {
+        println(doSelectQuery())
+    }
+
+    fun withTestPgDatabase(
+        block: suspend PgConnection.() -> Unit
+    ) =
+        runPollEventLoop(pollerFactory) {
+            val host = getEnv("POSTGRES_HOST") ?: "127.0.0.1"
+            val port = getEnv("POSTGRES_PORT")?.toInt() ?: 5432
+            val user = getEnv("POSTGRES_USER")  ?: error("no value found: POSTGRES_USER")
+            val password = getEnv("POSTGRES_PASSWORD")  ?: error("no value found: POSTGRES_PASSWORD")
+            val database = getEnv("POSTGRES_DB") ?: error("no value found: POSTGRES_DB")
+
+            withTimeout(1.seconds) {
+                val conn = openPgConnection(
+                    host = host,
+                    port = port,
+                    user = user,
+                    password = password,
+                    database = database,
+                )
+                conn.block()
+                conn.close()
+            }
+        }
+
+}

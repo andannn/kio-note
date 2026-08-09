@@ -5,3 +5,11 @@ object Config {
     const val HTMX_MIN_JS = "/static/htmx.min.js"
     const val UPLOAD_DIR = "./data/uploads/"
 }
+
+class Env(
+    val postgresHost: String,
+    val postgresPort: Int,
+    val postgresUser: String,
+    val postgresPassword: String,
+    val postgresDatabase: String,
+)

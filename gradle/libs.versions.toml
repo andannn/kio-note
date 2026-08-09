@@ -5,6 +5,7 @@ kio = "0.0.1"
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kio-http = { module = "io.github.kio-labs:kio-http", version.ref = "kio" }
+kio-postgres-connection = { module = "io.github.kio-labs:postgres-connection", version.ref = "kio" }
 kio-io = { module = "io.github.kio-labs:async-io", version.ref = "kio" }
 kio-poller-select = { module = "io.github.kio-labs:poller-jvm-select", version.ref = "kio" }
 
