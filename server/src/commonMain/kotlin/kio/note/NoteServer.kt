@@ -4,16 +4,20 @@ import kio.async.io.ServerSocket
 import kio.http.get
 import kio.http.httpServer
 import kio.http.staticResource
+import kio.note.database.initDb
 import kio.note.domain.MockRepositoryImpl
-import kio.note.domain.Repository
 import kio.note.page.noteMainPage
 import kio.note.util.Env
 import kio.postgres.conn.PgConnectionPool
 import kio.postgres.conn.openPgConnection
+import kio.postgres.conn.useConnection
 
 suspend fun noteServer(serverSocket: ServerSocket) {
     val env = loadEnv()
+
     val pgPool = createPgPool(env)
+    pgPool.useConnection { it.initDb() }
+
     val repo = MockRepositoryImpl()
 //    val repo = Repository(pgPool)
     with(repo) {

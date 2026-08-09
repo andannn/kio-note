@@ -7,15 +7,61 @@ import kio.postgres.conn.PgConnection
 import kio.postgres.conn.openPgConnection
 import kotlinx.coroutines.withTimeout
 import kotlin.test.Test
-import kotlin.test.assertNotNull
+import kotlin.test.assertEquals
 import kotlin.time.Duration.Companion.seconds
 
 abstract class DatabaseTest {
     abstract val pollerFactory: PollerFactory
 
     @Test
-    fun smokeTest() = withTestPgDatabase {
-        assertNotNull(createNote("new note"))
+    fun getNoteByIdTest() = withTestPgDatabase {
+        val note = createNote("new note")
+        assertEquals("new note", getNoteById(note.id)?.title)
+    }
+
+    @Test
+    fun getAllNoteTest() = withTestPgDatabase {
+        val note = createNote("new note")
+        assertEquals(1, getAllNote().size)
+    }
+
+    @Test
+    fun deleteBlock() = withTestPgDatabase {
+        val note = createNote("new note")
+        assertEquals(0, getNoteBlocksById(note.id).size)
+        val block1 = createBlockAfter(note.id, "text", null)
+        assertEquals(1, getNoteBlocksById(note.id).size)
+        deleteBlockById(block1.id)
+        assertEquals(0, getNoteBlocksById(note.id).size)
+    }
+
+    @Test
+    fun getNoteBlocksByNoteBlockIdTest() = withTestPgDatabase {
+        val note = createNote("new note")
+        assertEquals(0, getNoteBlocksById(note.id).size)
+        val block1 = createBlockAfter(note.id, "text", null)
+        assertEquals(block1, getNoteBlocksByNoteBlockId(noteBlockId = block1.id))
+    }
+
+    @Test
+    fun insertNoteBlockBetweenTest() = withTestPgDatabase {
+        val note = createNote("new note")
+        val block1 = createBlockAfter(note.id, "text", null)
+        assertEquals(1000, block1.sortOrder)
+        val block2 = createBlockAfter(note.id, "text", block1.id)
+        assertEquals(2000, block2.sortOrder)
+
+        // insert block between 1 and 2
+        val block3 = createBlockAfter(note.id, "text", block1.id)
+        assertEquals(1500, block3.sortOrder)
+    }
+
+    @Test
+    fun updateImageUrlTest() = withTestPgDatabase {
+        val note = createNote("new note")
+        val block1 = createBlockAfter(note.id, "text", null)
+        val newBlock = updateImageBlock(block1.id, "new url")
+        assertEquals("new url", newBlock?.imageUrl)
     }
 
     fun withTestPgDatabase(
@@ -41,5 +87,4 @@ abstract class DatabaseTest {
                 conn.close()
             }
         }
-
 }

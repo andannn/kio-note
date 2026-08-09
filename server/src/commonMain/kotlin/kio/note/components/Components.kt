@@ -88,7 +88,6 @@ private fun TagConsumer<*>.imageNoteBlock(blockContainerId: String, noteId: Long
     } else {
         img(
             src = block.url,
-            alt = block.alt,
         )
 
         input {

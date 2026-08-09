@@ -1,9 +1,19 @@
 package kio.note.domain
 
 import kio.async.AsyncRawSource
+import kio.note.database.NoteBlockEntity
+import kio.note.database.NotesEntity
+import kio.note.database.createBlockAfter
+import kio.note.database.deleteBlockById
+import kio.note.database.getAllNote
+import kio.note.database.getNoteBlocksById
+import kio.note.database.getNoteBlocksByNoteBlockId
+import kio.note.database.getNoteById
+import kio.note.database.updateImageBlock
 import kio.note.util.Config
 import kio.note.util.saveFileToPath
 import kio.postgres.conn.PgConnectionPool
+import kio.postgres.conn.useConnection
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlin.uuid.Uuid
@@ -12,6 +22,7 @@ enum class BlockType {
     TEXT,
     IMAGE,
     ;
+
     companion object {
         fun parse(value: String): BlockType? {
             return BlockType.entries.firstOrNull { it.name == value.uppercase() }
@@ -22,11 +33,12 @@ enum class BlockType {
 data class Note(
     val id: Long,
     val title: String,
-    val blocks: MutableList<NoteBlock>,
+    val blocks: MutableList<NoteBlock> = mutableListOf(),
 )
 
 sealed interface NoteBlock {
     val blockId: Long
+
     data class Text(
         override val blockId: Long,
         val text: String,
@@ -35,41 +47,51 @@ sealed interface NoteBlock {
     data class Image(
         override val blockId: Long,
         val url: String?,
-        val alt: String = "",
     ) : NoteBlock
 }
 
-fun Repository(pgPool: PgConnectionPool) : Repository = RepositoryImpl(pgPool)
+fun Repository(pgPool: PgConnectionPool): Repository = RepositoryImpl(pgPool)
 
 interface Repository {
     suspend fun getAllNoteMetaData(): List<Note>
     suspend fun getNoteById(id: Long): Note?
     suspend fun addBlockAfter(noteId: Long, blockId: Long, type: BlockType): NoteBlock?
     suspend fun deleteBlock(noteId: Long, noteBlockId: Long)
-    suspend fun saveImageToImageBlock(noteId: Long, noteBlockId: Long, fileSource: AsyncRawSource): NoteBlock.Image?
+    suspend fun saveImageToImageBlock(
+        noteId: Long,
+        noteBlockId: Long,
+        fileSource: AsyncRawSource
+    ): NoteBlock.Image?
 }
 
 private class RepositoryImpl(
-    pgPool: PgConnectionPool,
-): Repository {
+    val pgPool: PgConnectionPool,
+) : Repository {
     override suspend fun getAllNoteMetaData(): List<Note> {
-        TODO("Not yet implemented")
+        return pgPool.useConnection { it.getAllNote() }.map { it.toNote() }
     }
 
     override suspend fun getNoteById(id: Long): Note? {
-        TODO("Not yet implemented")
+        val noteBlocks = pgPool.useConnection { it.getNoteBlocksById(id) }.map { it.toNoteBlock() }
+        val note = pgPool.useConnection { it.getNoteById(id) }?.toNote()
+        return note?.copy(blocks = noteBlocks.toMutableList())
     }
 
     override suspend fun addBlockAfter(
         noteId: Long,
         blockId: Long,
         type: BlockType
-    ): NoteBlock? {
-        TODO("Not yet implemented")
+    ): NoteBlock {
+        val type = when (type) {
+            BlockType.TEXT -> "text"
+            BlockType.IMAGE -> "image"
+        }
+        val block = pgPool.useConnection { it.createBlockAfter(noteId, type, blockId) }
+        return block.toNoteBlock()
     }
 
     override suspend fun deleteBlock(noteId: Long, noteBlockId: Long) {
-        TODO("Not yet implemented")
+        pgPool.useConnection { it.deleteBlockById(noteBlockId) }
     }
 
     override suspend fun saveImageToImageBlock(
@@ -77,12 +99,32 @@ private class RepositoryImpl(
         noteBlockId: Long,
         fileSource: AsyncRawSource
     ): NoteBlock.Image? {
-        TODO("Not yet implemented")
-    }
+        val oldBlock = pgPool.useConnection { it.getNoteBlocksByNoteBlockId(noteBlockId) }
+        if (oldBlock?.type != "image") return null
 
+        val uuid = Uuid.random().toString()
+        val filePath = Path(Config.UPLOAD_DIR, uuid).toString()
+        fileSource.saveFileToPath(filePath)
+
+        if (oldBlock.imageUrl != null) {
+            val oldPath = Path(Config.UPLOAD_DIR, oldBlock.imageUrl.substringAfterLast("/"))
+            SystemFileSystem.delete(oldPath)
+        }
+
+        return pgPool.useConnection { it.updateImageBlock(noteBlockId, "/attachments/$uuid") }
+            ?.toNoteBlock() as? NoteBlock.Image
+    }
 }
 
-class MockRepositoryImpl: Repository {
+private fun NotesEntity.toNote(): Note = Note(id = id, title = title)
+
+private fun NoteBlockEntity.toNoteBlock(): NoteBlock = when (type) {
+    "text" -> NoteBlock.Text(blockId = id, textContent ?: "")
+    "image" -> NoteBlock.Image(blockId = id, imageUrl)
+    else -> error("not valid block type $type")
+}
+
+class MockRepositoryImpl : Repository {
     private val notes = mutableListOf(
         Note(
             id = 1,
@@ -165,7 +207,7 @@ class MockRepositoryImpl: Repository {
 
         val newBlock = oldBlock.copy(url = "/attachments/$uuid")
         note.blocks.removeAt(noteBlockIndex)
-        note.blocks.add(noteBlockIndex, newBlock    )
+        note.blocks.add(noteBlockIndex, newBlock)
         return newBlock
     }
 }
