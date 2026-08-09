@@ -1,11 +1,14 @@
 package kio.note.database
 
-import kio.postegre.types.PgInt8
-import kio.postegre.types.PgText
-import kio.postegre.types.PgTimestampTz
+import kio.postgres.types.PgInt8
+import kio.postgres.types.PgText
+import kio.postgres.types.PgTimestampTz
 import kio.postgres.conn.PgConnection
 import kio.postgres.conn.exec
+import kio.postgres.conn.param
 import kio.postgres.conn.query
+import kio.postgres.types.PostgresInt8Serializer
+import kio.postgres.types.PostgresTextSerializer
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.toCollection
@@ -76,33 +79,18 @@ data class NotesEntity(
     val updateAt: PgTimestampTz,
 )
 
-@Serializable
-private class NotesToCreate(
-    @SerialName("title")
-    val title: PgText,
-)
-
 suspend fun PgConnection.createNote(title: PgText): NotesEntity {
     val ret: Flow<NotesEntity> = query(
         """
             insert into notes(title)
             values ($1)
             returning id, title, create_at, update_at
-        """.trimIndent(),
-        NotesToCreate(title)
-    )
+        """.trimIndent()
+    ) {
+        param(title, PostgresTextSerializer)
+    }
     return ret.firstOrNull() ?: error("note create failed")
 }
-
-@Serializable
-private class NoteBlockToCreate(
-    @SerialName("note_id")
-    val noteId: PgInt8,
-    @SerialName("type")
-    val type: PgText,
-    @SerialName("sort_order")
-    val sortOrder: PgInt8,
-)
 
 suspend fun PgConnection.createBlockAfter(
     noteId: Long,
@@ -131,12 +119,11 @@ suspend fun PgConnection.createBlockAfter(
                 text_content,
                 image_url
         """.trimIndent(),
-        NoteBlockToCreate(
-            noteId = noteId,
-            type = noteBlockType,
-            sortOrder = sortOrder
-        )
-    )
+    ) {
+        param(noteId, PostgresInt8Serializer)
+        param(noteBlockType, PostgresTextSerializer)
+        param(sortOrder, PostgresInt8Serializer)
+    }
     return ret.firstOrNull() ?: error("can not create note block.")
 }
 
@@ -149,18 +136,26 @@ private suspend fun PgConnection.findInsertSortOrder(noteId: Long, afterBlockId:
     val currentSortOrder: Sort = query<Sort>(
         """
         select sort_order from note_blocks
-        where note_id = $noteId and id = $afterBlockId
+        where note_id = $1 and id = $2
         """.trimIndent()
-    ).firstOrNull() ?: error("no sort order")
+    ) {
+        param(noteId, PostgresInt8Serializer)
+        param(afterBlockId, PostgresInt8Serializer)
+    }
+        .firstOrNull() ?: error("no sort order")
 
     val nextSortOrder: Sort? = query<Sort>(
         """
         select sort_order from note_blocks
-        where note_id = $noteId AND sort_order > ${currentSortOrder.value}
+        where note_id = $1 AND sort_order > $2
         order by sort_order
         limit 1
         """.trimIndent()
-    ).firstOrNull()
+    ) {
+        param(noteId, PostgresInt8Serializer)
+        param(currentSortOrder.value, PostgresInt8Serializer)
+    }
+        .firstOrNull()
     val nextOrder = if (nextSortOrder == null) {
         currentSortOrder.value + 1000
     } else {
@@ -178,50 +173,40 @@ suspend fun PgConnection.getAllNote(): List<NotesEntity> {
 }
 
 suspend fun PgConnection.getNoteById(noteId: PgInt8): NotesEntity? {
-    @Serializable
-    data class Param(@SerialName("id") val id: PgInt8)
-
-    val ret: Flow<NotesEntity> = query("select * from notes where id = $1", Param(noteId))
+    val ret: Flow<NotesEntity> = query("select * from notes where id = $1") {
+        param(noteId, PostgresInt8Serializer)
+    }
     return ret.firstOrNull()
 }
 
 suspend fun PgConnection.getNoteBlocksByNoteBlockId(noteBlockId: PgInt8): NoteBlockEntity? {
-    @Serializable
-    data class Param(@SerialName("id") val id: PgInt8)
-
     val ret: Flow<NoteBlockEntity> =
-        query("select * from note_blocks where id = $1 order by sort_order", Param(noteBlockId))
+        query("select * from note_blocks where id = $1 order by sort_order") {
+            param(noteBlockId, PostgresInt8Serializer)
+        }
     return ret.firstOrNull()
 }
 
 suspend fun PgConnection.getNoteBlocksById(noteId: PgInt8): List<NoteBlockEntity> {
-    @Serializable
-    data class Param(@SerialName("id") val id: PgInt8)
-
     val ret: Flow<NoteBlockEntity> =
-        query("select * from note_blocks where note_id = $1 order by sort_order", Param(noteId))
+        query("select * from note_blocks where note_id = $1 order by sort_order") {
+            param(noteId, PostgresInt8Serializer)
+        }
     val list = mutableListOf<NoteBlockEntity>()
     ret.toCollection(list)
     return list
 }
 
 suspend fun PgConnection.deleteBlockById(blockId: Long) {
-    @Serializable
-    data class Param(@SerialName("id") val id: PgInt8)
-
-    exec("delete from note_blocks where id = $1", Param(blockId))
+    exec("delete from note_blocks where id = $1") {
+        param(blockId, PostgresInt8Serializer)
+    }
 }
 
 suspend fun PgConnection.updateImageBlock(
     noteBlockId: Long,
     imageUrl: String
 ): NoteBlockEntity? {
-    @Serializable
-    data class Param(
-        @SerialName("image_url") val imageUrl: PgText,
-        @SerialName("id") val blockId: PgInt8,
-    )
-
     val ret: Flow<NoteBlockEntity> = query(
         """
         update note_blocks set image_url = $1 where id = $2
@@ -233,7 +218,9 @@ suspend fun PgConnection.updateImageBlock(
             text_content,
             image_url
         """.trimIndent(),
-        Param(imageUrl, noteBlockId)
-    )
+    ) {
+        param(imageUrl, PostgresTextSerializer)
+        param(noteBlockId, PostgresInt8Serializer)
+    }
     return ret.firstOrNull()
 }

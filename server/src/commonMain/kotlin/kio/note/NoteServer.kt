@@ -15,8 +15,8 @@ import kio.postgres.conn.useConnection
 suspend fun noteServer(serverSocket: ServerSocket) {
     val env = loadEnv()
 
-    val pgPool = createPgPool(env)
-    pgPool.useConnection { it.initDb() }
+//    val pgPool = createPgPool(env)
+//    pgPool.useConnection { it.initDb() }
 
     val repo = MockRepositoryImpl()
 //    val repo = Repository(pgPool)
