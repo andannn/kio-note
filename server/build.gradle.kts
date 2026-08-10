@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.serialization)
 }
 
 kotlin {
@@ -18,7 +19,11 @@ kotlin {
         }
         commonMain.dependencies {
             implementation(libs.kio.http)
+            implementation(libs.kio.postgres.connection)
             implementation(libs.kio.io)
+        }
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
         }
     }
 }

@@ -1,0 +1,17 @@
+services:
+  postgres-trust:
+    image: postgres:17
+    ports:
+      - "15430:5432"
+    environment:
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_DB: test_database
+      POSTGRES_HOST_AUTH_METHOD: password
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U test_user -d test_database
+      interval: 1s
+      timeout: 5s
+      retries: 30
