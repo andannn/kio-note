@@ -79,6 +79,12 @@ data class NotesEntity(
     val updateAt: PgTimestampTz,
 )
 
+suspend fun PgConnection.deleteNoteById(id: Long) {
+    exec("delete from notes where id = $1") {
+        param(id, PostgresInt8Serializer)
+    }
+}
+
 suspend fun PgConnection.createNote(title: PgText): NotesEntity {
     val ret: Flow<NotesEntity> = query(
         """
@@ -170,6 +176,48 @@ suspend fun PgConnection.getAllNote(): List<NotesEntity> {
     val list = mutableListOf<NotesEntity>()
     ret.toCollection(list)
     return list
+}
+
+suspend fun PgConnection.updateContentForTextBlock(
+    noteId: Long,
+    noteBlockId: Long,
+    content: String,
+): NoteBlockEntity? {
+    val ret: Flow<NoteBlockEntity> = query(
+        """
+        update note_blocks
+        set text_content = $1
+        where id = $2 and note_id = $3 and type = 'text'
+        returning
+           id,
+           note_id,
+           type,
+           sort_order,
+           text_content,
+           image_url
+        """.trimIndent()
+    ) {
+        param(content, PostgresTextSerializer)
+        param(noteBlockId, PostgresInt8Serializer)
+        param(noteId, PostgresInt8Serializer)
+    }
+    return ret.firstOrNull()
+
+}
+
+suspend fun PgConnection.changeNoteTitle(noteId: PgInt8, title: PgText): NotesEntity? {
+    val ret: Flow<NotesEntity> = query(
+        """
+        update notes
+        set title = $2, update_at = now()
+        where id = $1
+        returning id, title, create_at, update_at
+        """.trimIndent()
+    ) {
+        param(noteId, PostgresInt8Serializer)
+        param(title, PostgresTextSerializer)
+    }
+    return ret.firstOrNull()
 }
 
 suspend fun PgConnection.getNoteById(noteId: PgInt8): NotesEntity? {

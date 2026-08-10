@@ -4,48 +4,101 @@ import kio.note.domain.Note
 import kio.note.domain.NoteBlock
 import kio.note.util.hxDelete
 import kio.note.util.hxGet
+import kio.note.util.hxInclude
+import kio.note.util.hxPatch
 import kio.note.util.hxPost
 import kio.note.util.hxSwap
 import kio.note.util.hxTarget
 import kio.note.util.hxTrigger
 import kotlinx.html.*
 
-fun TagConsumer<*>.noteList(notes: List<Note>) {
-    section {
-        id = "note-list"
-        classes = setOf("note-list")
+fun TagConsumer<*>.noteMainContentEmpty() {
+    p { +"Select a note" }
+}
 
-        if (notes.isEmpty()) {
-            p(classes = "note-list__empty") {
-                +"No notes yet."
-            }
-        } else {
-            ul {
-                notes.forEach { note ->
-                    li {
-                        noteItem(note)
-                    }
-                }
-            }
+fun TagConsumer<*>.noteAsideMenu() {
+    h1 { +"Knote" }
+
+    val noteListId = "note-list-items"
+
+    button {
+        hxPost = "/notes"
+        hxTarget = "#$noteListId"
+        hxSwap = "afterbegin"
+        attributes["hx-on:click"] =
+            """
+            document.querySelectorAll('.note-item.selected')
+                .forEach(it => it.classList.remove('selected'))
+            """.trimIndent()
+        +"New note"
+    }
+
+    section {
+        hxGet = "/notes"
+        hxTrigger = "load"
+        hxTarget = "#$noteListId"
+        hxSwap = "innerHTML"
+
+        ul {
+            id = noteListId
         }
     }
 }
 
-private fun TagConsumer<*>.noteItem(note: Note) {
-    button {
-        hxGet = "/notes/${note.id}"
-        hxTarget = "#note-content"
-        hxSwap = "innerHTML"
+fun TagConsumer<*>.noteList(notes: List<Note>) {
+    notes.forEach { note ->
+        noteItem(note)
+    }
+}
 
-        +note.title
+fun TagConsumer<*>.noteItem(note: Note, selected: Boolean = false) {
+    li(classes = "note-item") {
+        val noteId = "note-${note.id}"
+        id = noteId
+
+        if (selected) classes += setOf("selected")
+
+        button {
+            hxGet = "/notes/${note.id}"
+            hxTarget = "#note-content"
+            hxSwap = "innerHTML"
+            attributes["hx-on:click"] =
+                """
+                document.querySelectorAll('.note-item.selected')
+                    .forEach(it => it.classList.remove('selected'));
+                this.closest('.note-item').classList.add('selected');
+                """.trimIndent()
+            +note.title
+        }
+
+        button {
+            hxDelete = "/notes/${note.id}"
+            hxSwap = "delete"
+            hxTarget = "#$noteId"
+            hxInclude = "#current-note-id"
+
+            +"Delete"
+        }
     }
 }
 
 fun TagConsumer<*>.noteContent(note: Note) {
     article {
-        h1 {
-            +note.title
+        hiddenInput {
+            id = "current-note-id"
+            name = "currentNoteId"
+            value = note.id.toString()
         }
+
+        input {
+            name = "title"
+            value = note.title
+
+            hxPatch = "/notes/${note.id}/title"
+            hxTrigger = "input changed delay:500ms"
+            hxSwap = "none"
+        }
+
         note.blocks.forEach { block ->
             noteBlock(note.id, block)
         }
@@ -71,7 +124,11 @@ fun TagConsumer<*>.noteBlock(noteId: Long, block: NoteBlock, isNewAdded: Boolean
 }
 
 
-private fun TagConsumer<*>.imageNoteBlock(blockContainerId: String, noteId: Long, block: NoteBlock.Image) {
+private fun TagConsumer<*>.imageNoteBlock(
+    blockContainerId: String,
+    noteId: Long,
+    block: NoteBlock.Image
+) {
     if (block.url == null) {
         input {
             type = InputType.file

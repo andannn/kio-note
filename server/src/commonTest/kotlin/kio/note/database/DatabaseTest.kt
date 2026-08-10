@@ -20,6 +20,29 @@ abstract class DatabaseTest {
     }
 
     @Test
+    fun deleteNoteByIdTest() = withTestPgDatabase {
+        val note = createNote("new note")
+        deleteNoteById(note.id)
+        assertEquals(null, getNoteById(note.id))
+    }
+
+    @Test
+    fun changeNoteTitleTest() = withTestPgDatabase {
+        val note = createNote("new note")
+        val newNote = changeNoteTitle(note.id, "new title")
+        assertEquals("new title", newNote?.title)
+        assertEquals("new title", getNoteById(note.id)?.title)
+    }
+
+    @Test
+    fun updateContentForTextBlockTest() = withTestPgDatabase {
+        val note = createNote("new note")
+        val block = createBlockAfter(note.id, "text", null)
+        val ret = updateContentForTextBlock(note.id, noteBlockId = block.id, "new content")
+        assertEquals("new content", ret?.textContent)
+    }
+
+    @Test
     fun getAllNoteTest() = withTestPgDatabase {
         val note = createNote("new note")
         assertEquals(1, getAllNote().size)

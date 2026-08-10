@@ -2,7 +2,9 @@ package kio.note.page
 
 import kio.http.CallContext
 import kio.http.respondHtml
+import kio.note.components.noteAsideMenu
 import kio.note.components.noteList
+import kio.note.components.noteMainContentEmpty
 import kio.note.domain.Repository
 import kio.note.util.Config
 import kotlinx.html.*
@@ -22,15 +24,14 @@ suspend fun CallContext.noteMainPage() {
             aside {
                 style = "width: 280px;"
 
-                h1 { +"Knote" }
-                noteList(notes)
+                noteAsideMenu()
             }
 
             main(classes = "page") {
                 style = "flex: 1;"
                 id = "note-content"
 
-                p { +"Select a note" }
+                noteMainContentEmpty()
             }
         }
         footer { }

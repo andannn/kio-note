@@ -2,6 +2,12 @@ package kio.note.util
 
 import kotlinx.html.*
 
+var Tag.hxSwapOob: String
+    get() = attributes["hx-swap-oob"].orEmpty()
+    set(value) {
+        attributes["hx-swap-oob"] = value
+    }
+
 var Tag.hxGet: String
     get() = attributes["hx-get"].orEmpty()
     set(value) {
@@ -24,6 +30,12 @@ var Tag.hxDelete: String
     get() = attributes["hx-delete"].orEmpty()
     set(value) {
         attributes["hx-delete"] = value
+    }
+
+var Tag.hxInclude: String
+    get() = attributes["hx-include"].orEmpty()
+    set(value) {
+        attributes["hx-include"] = value
     }
 
 var Tag.hxTarget: String

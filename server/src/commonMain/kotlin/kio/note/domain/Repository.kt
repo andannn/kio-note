@@ -3,12 +3,16 @@ package kio.note.domain
 import kio.async.AsyncRawSource
 import kio.note.database.NoteBlockEntity
 import kio.note.database.NotesEntity
+import kio.note.database.changeNoteTitle
 import kio.note.database.createBlockAfter
+import kio.note.database.createNote
 import kio.note.database.deleteBlockById
+import kio.note.database.deleteNoteById
 import kio.note.database.getAllNote
 import kio.note.database.getNoteBlocksById
 import kio.note.database.getNoteBlocksByNoteBlockId
 import kio.note.database.getNoteById
+import kio.note.database.updateContentForTextBlock
 import kio.note.database.updateImageBlock
 import kio.note.util.Config
 import kio.note.util.saveFileToPath
@@ -53,20 +57,24 @@ sealed interface NoteBlock {
 fun Repository(pgPool: PgConnectionPool): Repository = RepositoryImpl(pgPool)
 
 interface Repository {
+    suspend fun createNewNote(): Note
     suspend fun getAllNoteMetaData(): List<Note>
     suspend fun getNoteById(id: Long): Note?
-    suspend fun addBlockAfter(noteId: Long, blockId: Long, type: BlockType): NoteBlock?
+    suspend fun changeNoteTitleById(id: Long, title: String): Note?
+    suspend fun deleteNoteById(id: Long)
+    suspend fun addBlockAfter(noteId: Long, blockId: Long?, type: BlockType): NoteBlock?
     suspend fun deleteBlock(noteId: Long, noteBlockId: Long)
-    suspend fun saveImageToImageBlock(
-        noteId: Long,
-        noteBlockId: Long,
-        fileSource: AsyncRawSource
-    ): NoteBlock.Image?
+    suspend fun saveImageToImageBlock(noteId: Long, noteBlockId: Long, fileSource: AsyncRawSource): NoteBlock.Image?
+    suspend fun saveTextToTextBlock(noteId: Long, noteBlockId: Long, content: String): NoteBlock.Text?
 }
 
 private class RepositoryImpl(
     val pgPool: PgConnectionPool,
 ) : Repository {
+    override suspend fun createNewNote(): Note {
+        return pgPool.useConnection { it.createNote("Untitled") }.toNote()
+    }
+
     override suspend fun getAllNoteMetaData(): List<Note> {
         return pgPool.useConnection { it.getAllNote() }.map { it.toNote() }
     }
@@ -77,9 +85,17 @@ private class RepositoryImpl(
         return note?.copy(blocks = noteBlocks.toMutableList())
     }
 
+    override suspend fun changeNoteTitleById(id: Long, title: String): Note? {
+        return pgPool.useConnection { it.changeNoteTitle(id, title) }?.toNote()
+    }
+
+    override suspend fun deleteNoteById(id: Long) {
+        pgPool.useConnection { it.deleteNoteById(id) }
+    }
+
     override suspend fun addBlockAfter(
         noteId: Long,
-        blockId: Long,
+        blockId: Long?,
         type: BlockType
     ): NoteBlock {
         val type = when (type) {
@@ -114,6 +130,16 @@ private class RepositoryImpl(
         return pgPool.useConnection { it.updateImageBlock(noteBlockId, "/attachments/$uuid") }
             ?.toNoteBlock() as? NoteBlock.Image
     }
+
+    override suspend fun saveTextToTextBlock(
+        noteId: Long,
+        noteBlockId: Long,
+        content: String
+    ): NoteBlock.Text? {
+        val block = pgPool.useConnection { it.updateContentForTextBlock(noteId, noteBlockId, content) }
+            ?.toNoteBlock() as? NoteBlock.Text
+        return block
+    }
 }
 
 private fun NotesEntity.toNote(): Note = Note(id = id, title = title)
@@ -144,6 +170,11 @@ class MockRepositoryImpl : Repository {
 
     private var nextNoteId = 3L
     private var nextBlockId = 2L
+    override suspend fun createNewNote(): Note {
+        val newNote = Note(nextNoteId++, title = "Untitled")
+        notes.add(0, newNote)
+        return newNote
+    }
 
     override suspend fun getAllNoteMetaData(): List<Note> {
         return notes
@@ -153,22 +184,38 @@ class MockRepositoryImpl : Repository {
         return notes.firstOrNull { it.id == id }
     }
 
+    override suspend fun changeNoteTitleById(id: Long, title: String): Note? {
+        val note = getNoteById(id) ?: return null
+        return note.copy(title = title)
+    }
+
+    override suspend fun deleteNoteById(id: Long) {
+        notes.removeIf { it.id == id}
+    }
+
     override suspend fun addBlockAfter(
         noteId: Long,
-        blockId: Long,
+        blockId: Long?,
         type: BlockType
     ): NoteBlock? {
-        val note = getNoteById(noteId) ?: return null
-
-        val blockIndex = note.blocks.indexOfFirst { it.blockId == blockId }
-        if (blockIndex == -1) return null
-        val newTextBlock = when (type) {
+        val newBlock = when (type) {
             BlockType.TEXT -> NoteBlock.Text(nextBlockId++, "")
             BlockType.IMAGE -> NoteBlock.Image(nextBlockId++, url = null)
         }
 
-        note.blocks.add(blockIndex + 1, newTextBlock)
-        return newTextBlock
+        val note = getNoteById(noteId) ?: return null
+
+        if (blockId == null) {
+            note.blocks.add(0, newBlock)
+            return newBlock
+        }
+
+        val blockIndex = note.blocks.indexOfFirst { it.blockId == blockId }
+
+        if (blockIndex == -1) return null
+
+        note.blocks.add(blockIndex + 1, newBlock)
+        return newBlock
     }
 
     override suspend fun deleteBlock(noteId: Long, noteBlockId: Long) {
@@ -209,5 +256,19 @@ class MockRepositoryImpl : Repository {
         note.blocks.removeAt(noteBlockIndex)
         note.blocks.add(noteBlockIndex, newBlock)
         return newBlock
+    }
+
+    override suspend fun saveTextToTextBlock(
+        noteId: Long,
+        noteBlockId: Long,
+        content: String
+    ): NoteBlock.Text? {
+        val note = getNoteById(noteId) ?: return null
+        val noteBlockIndex = note.blocks.indexOfFirst { it.blockId == noteBlockId }
+        if (noteBlockIndex == -1) return null
+        val oldBlock = note.blocks[noteBlockIndex] as? NoteBlock.Text ?: return null
+
+        val newBLock = oldBlock.copy(text = content)
+        return newBLock
     }
 }
