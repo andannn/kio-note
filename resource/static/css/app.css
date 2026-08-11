@@ -228,6 +228,16 @@ body {
 
 .note-block {
     position: relative;
+
+    border-radius: 6px;
+    outline: 1px solid transparent;
+    outline-offset: 4px;
+
+    transition: outline-color 120ms ease;
+}
+
+.note-block:focus-within {
+    outline-color: rgba(0, 0, 0, 0.12);
 }
 
 /*
@@ -365,4 +375,121 @@ body {
 
 .block-menu-item:hover {
     background: #f3f3f3;
+}
+
+/* Image block */
+
+.image-upload {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    width: 100%;
+    min-height: 120px;
+
+    border: 1px dashed #d8d8d8;
+    border-radius: 8px;
+
+    background: #fafafa;
+    color: #888;
+
+    cursor: pointer;
+
+    transition:
+        background-color 120ms ease,
+        border-color 120ms ease,
+        color 120ms ease;
+}
+
+.image-upload:hover {
+    border-color: #bdbdbd;
+    background: #f6f6f6;
+    color: #555;
+}
+
+.image-upload-input {
+    display: none;
+}
+
+.image-upload-icon {
+    font-size: 22px;
+    line-height: 1;
+}
+
+.image-upload-text {
+    font-size: 15px;
+    font-weight: 500;
+}
+
+.image-block-content {
+    position: relative;
+
+    width: 100%;
+    margin: 4px 0;
+}
+
+.image-block-image {
+    display: block;
+
+    max-width: 100%;
+    height: auto;
+
+    border-radius: 8px;
+}
+
+/* Actions */
+
+.image-block-actions {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+
+    display: flex;
+    gap: 6px;
+
+    opacity: 0;
+    pointer-events: none;
+
+    transition: opacity 120ms ease;
+}
+
+.image-block-content:hover .image-block-actions,
+.image-block-content:focus-within .image-block-actions {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.image-block-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 30px;
+    padding: 5px 10px;
+
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 6px;
+
+    background: rgba(255, 255, 255, 0.94);
+    color: #444;
+
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+
+    cursor: pointer;
+
+    box-shadow:
+        0 1px 4px rgba(0, 0, 0, 0.10),
+        0 1px 2px rgba(0, 0, 0, 0.06);
+
+    transition:
+        background-color 120ms ease,
+        color 120ms ease;
+}
+
+.image-block-action:hover {
+    background: #fff;
+    color: #222;
 }

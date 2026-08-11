@@ -20,7 +20,7 @@ import kio.tls.withServerTls
 suspend fun noteServer(serverSocket: ServerSocket) {
     val env = loadEnv()
 
-    setupServer(isMock = true, serverSocket, env) { repo ->
+    setupServer(isMock = false, serverSocket, env) { repo ->
         with (repo) {
             get("/") { call -> call.noteMainPage() }
             notesRoute()

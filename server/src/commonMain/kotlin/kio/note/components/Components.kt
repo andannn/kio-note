@@ -121,13 +121,14 @@ fun TagConsumer<*>.noteBlock(noteId: Long, block: NoteBlock, isNewAdded: Boolean
     div(classes = "note-block") {
         val blockContainerId = "block-${block.blockId}"
         id = blockContainerId
+
         when (block) {
             is NoteBlock.Text -> {
                 textNoteBlock(blockContainerId, noteId, block, isNewAdded)
             }
 
             is NoteBlock.Image -> {
-                imageNoteBlock(blockContainerId, noteId, block)
+                imageNoteBlock(blockContainerId, noteId, block, isNewAdded)
             }
         }
 
@@ -139,45 +140,80 @@ fun TagConsumer<*>.noteBlock(noteId: Long, block: NoteBlock, isNewAdded: Boolean
 private fun TagConsumer<*>.imageNoteBlock(
     blockContainerId: String,
     noteId: Long,
-    block: NoteBlock.Image
+    block: NoteBlock.Image,
+    autoFocus: Boolean = false,
 ) {
-    if (block.url == null) {
-        input {
-            type = InputType.file
-            name = "image"
-            accept = "image/*"
+    div(classes = "image-block-content") {
+        attributes["tabindex"] = "-1"
+        attributes["onclick"] = "this.focus()"
 
-            hxPost = "/notes/$noteId/blocks/${block.blockId}/image"
-            hxTrigger = "change"
-            hxTarget = "#block-${block.blockId}"
-            hxSwap = "outerHTML"
+        attributes["data-note-id"] = noteId.toString()
+        attributes["data-block-id"] = block.blockId.toString()
 
-            attributes["hx-encoding"] = "multipart/form-data"
-        }
-    } else {
-        img(
-            src = block.url,
-        )
+        attributes["onkeydown"] =
+            "handleImageBlockKeyDown(event, this)"
 
-        input {
-            type = InputType.file
-            name = "image"
-            accept = "image/*"
-
-            hxPost = "/notes/$noteId/blocks/${block.blockId}/image"
-            hxTrigger = "change"
-            hxTarget = "#$blockContainerId"
-            hxSwap = "outerHTML"
-
-            attributes["hx-encoding"] = "multipart/form-data"
+        if (autoFocus) {
+            attributes["data-autofocus"] = "true"
         }
 
-        button {
-            hxDelete = "/notes/$noteId/blocks/${block.blockId}"
-            hxTarget = "#$blockContainerId"
-            hxSwap = "delete"
+        if (block.url == null) {
+            label(classes = "image-upload") {
+                input(classes = "image-upload-input") {
+                    type = InputType.file
+                    name = "image"
+                    accept = "image/*"
 
-            +"Delete block"
+                    hxPost = "/notes/$noteId/blocks/${block.blockId}/image"
+                    hxTrigger = "change"
+                    hxTarget = "#$blockContainerId"
+                    hxSwap = "outerHTML"
+
+                    attributes["hx-encoding"] = "multipart/form-data"
+                }
+
+                span(classes = "image-upload-icon") {
+                    +"＋"
+                }
+
+                span(classes = "image-upload-text") {
+                    +"Add image"
+                }
+            }
+        } else {
+            img(
+                classes = "image-block-image",
+                src = block.url,
+            )
+        }
+
+        div(classes = "image-block-actions") {
+            if (block.url != null) {
+                label(classes = "image-block-action") {
+                    input(classes = "image-upload-input") {
+                        type = InputType.file
+                        name = "image"
+                        accept = "image/*"
+
+                        hxPost = "/notes/$noteId/blocks/${block.blockId}/image"
+                        hxTrigger = "change"
+                        hxTarget = "#$blockContainerId"
+                        hxSwap = "outerHTML"
+
+                        attributes["hx-encoding"] = "multipart/form-data"
+                    }
+
+                    +"Replace"
+                }
+            }
+
+            button(classes = "image-block-action") {
+                hxDelete = "/notes/$noteId/blocks/${block.blockId}"
+                hxTarget = "#$blockContainerId"
+                hxSwap = "delete"
+
+                +"Delete"
+            }
         }
     }
 }
@@ -200,77 +236,21 @@ private fun TagConsumer<*>.textNoteBlock(
         hxTrigger = "input changed delay:1s"
         hxSwap = "none"
 
-        attributes["oninput"] =
-            "this.style.height='auto'; this.style.height=this.scrollHeight+'px';"
+        attributes["data-note-id"] = noteId.toString()
+        attributes["data-block-id"] = block.blockId.toString()
+        attributes["data-block-container-id"] = blockContainerId
 
-        attributes["hx-on:keydown"] = """
-                if (event.key === 'Backspace' && this.value === '') {
-                    event.preventDefault()
-                    console.log(event.key)
-                    
-                    const currentBlock = document.querySelector('#$blockContainerId')
-                    const previousBlock = currentBlock.previousElementSibling
-
-                   htmx.ajax(
-                        'DELETE',
-                        '/notes/$noteId/blocks/${block.blockId}',
-                        {
-                            target: '#$blockContainerId',
-                            swap: 'delete'
-                        }
-                    ).then(() => {
-                        previousBlock?.querySelector('textarea')?.focus()
-                    })
-                }
-
-                if (event.key === 'Enter' && !event.shiftKey) {
-                    event.preventDefault()
-                    htmx.ajax(
-                        'POST',
-                        '/notes/$noteId/blocks/${block.blockId}/after?type=text',
-                        {
-                            target: '#$blockContainerId',
-                            swap: 'afterend'
-                        }
-                    )
-                }
-
-                if (
-                    event.key === 'ArrowUp' &&
-                    this.selectionStart === 0
-                ) {
-                    const currentBlock = document.querySelector('#$blockContainerId')
-                    const previousInput =
-                        currentBlock.previousElementSibling?.querySelector('textarea')
-            
-                    if (previousInput) {
-                        event.preventDefault()
-                        previousInput.focus()
-                        previousInput.selectionStart = previousInput.value.length
-                        previousInput.selectionEnd = previousInput.value.length
-                    }
-                }
-            
-                if (
-                    event.key === 'ArrowDown' &&
-                    this.selectionStart === this.value.length
-                ) {
-                    const currentBlock = document.querySelector('#$blockContainerId')
-                    const nextInput =
-                        currentBlock.nextElementSibling?.querySelector('textarea')
-            
-                    if (nextInput) {
-                        event.preventDefault()
-                        nextInput.focus()
-                        nextInput.selectionStart = 0
-                        nextInput.selectionEnd = 0
-                    }
-                }
-            """.trimIndent()
+        attributes["oninput"] = "resizeTextBlock(this)"
+        attributes["onkeydown"] = "handleTextBlockKeyDown(event, this)"
 
         +block.text
     }
 }
+
+private val blockMenu = listOf(
+    "text",
+    "image",
+)
 
 private fun TagConsumer<*>.addBlockMenu(
     blockContainerId: String,
@@ -284,20 +264,19 @@ private fun TagConsumer<*>.addBlockMenu(
         }
 
         div(classes = "block-menu-popup") {
-            button(classes = "block-menu-item") {
-                hxPost = "/notes/$noteId/blocks/$blockId/after?type=text"
-                hxTarget = "#$blockContainerId"
-                hxSwap = "afterend"
+            blockMenu.forEach { item ->
+                button(classes = "block-menu-item") {
+                    hxPost = "/notes/$noteId/blocks/$blockId/after?type=$item"
 
-                +"Text"
-            }
+                    hxTarget = "#$blockContainerId"
+                    hxSwap = "afterend"
+                    attributes["onclick"] = "closeBlockMenu(this)"
 
-            button(classes = "block-menu-item") {
-                hxPost = "/notes/$noteId/blocks/$blockId/after?type=image"
-                hxTarget = "#$blockContainerId"
-                hxSwap = "afterend"
-
-                +"Image"
+                    when (item) {
+                        "text" -> +"Text"
+                        "image" -> +"Image"
+                    }
+                }
             }
         }
     }

@@ -13,6 +13,7 @@ suspend fun CallContext.noteMainPage() {
     respondHtml {
         head {
             script(src = Config.HTMX_MIN_JS) { }
+            script(src = Config.APP_JS) { }
             link(rel = "stylesheet", href = Config.APP_CSS)
             title { +"Knote" }
         }
