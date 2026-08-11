@@ -12,4 +12,6 @@ class Env(
     val postgresUser: String,
     val postgresPassword: String,
     val postgresDatabase: String,
+    val tlsCert: String,
+    val tlsKey: String,
 )

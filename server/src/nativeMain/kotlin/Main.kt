@@ -9,8 +9,8 @@ import platform.posix.SIGPIPE
 import platform.posix.SIG_IGN
 import platform.posix.signal
 
-const val HOST_IP = "127.0.0.1"
-const val PORT = 7878
+const val HOST_IP = "0.0.0.0"
+const val PORT = 8080
 
 fun main() = runPollEventLoop(LinuxUring) {
     signal(SIGPIPE, SIG_IGN)

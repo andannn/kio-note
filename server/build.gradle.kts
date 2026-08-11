@@ -30,6 +30,7 @@ kotlin {
         }
         commonMain.dependencies {
             implementation(libs.kio.http)
+            implementation(libs.kio.tls)
             implementation(libs.kio.postgres.connection)
             implementation(libs.kio.io)
         }
@@ -37,4 +38,19 @@ kotlin {
             implementation(libs.kotlin.test)
         }
     }
+}
+
+tasks.register<Sync>("prepareKnoteDist") {
+    dependsOn("linkReleaseExecutableLinuxX64")
+
+    from(layout.buildDirectory.dir("bin/linuxX64/releaseExecutable")) {
+        include("server.kexe")
+        rename("server.kexe", "knote")
+    }
+
+    from(rootProject.projectDir.resolve("resource")) {
+        into("resource")
+    }
+
+    into(layout.buildDirectory.dir("dist/knote"))
 }
