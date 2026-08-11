@@ -17,30 +17,40 @@ fun TagConsumer<*>.noteMainContentEmpty() {
 }
 
 fun TagConsumer<*>.noteAsideMenu() {
-    h1 { +"Knote" }
 
     val noteListId = "note-list-items"
 
-    button {
-        hxPost = "/notes"
-        hxTarget = "#$noteListId"
-        hxSwap = "afterbegin"
-        attributes["hx-on:click"] =
-            """
+    div(classes = "sidebar-header") {
+        h1(classes = "sidebar-title") { +"Knote" }
+
+        button(classes = "new-note-button") {
+            hxPost = "/notes"
+            hxTarget = "#$noteListId"
+            hxSwap = "afterbegin"
+            attributes["hx-on:click"] =
+                """
             document.querySelectorAll('.note-item.selected')
                 .forEach(it => it.classList.remove('selected'))
             """.trimIndent()
-        +"New note"
-    }
 
-    section {
-        hxGet = "/notes"
-        hxTrigger = "load"
-        hxTarget = "#$noteListId"
-        hxSwap = "innerHTML"
+            span {
+                +"＋"
+            }
 
-        ul {
-            id = noteListId
+            span {
+                +"New note"
+            }
+        }
+
+        section(classes = "sidebar-notes") {
+            hxGet = "/notes"
+            hxTrigger = "load"
+            hxTarget = "#$noteListId"
+            hxSwap = "innerHTML"
+
+            ul {
+                id = noteListId
+            }
         }
     }
 }
@@ -58,7 +68,7 @@ fun TagConsumer<*>.noteItem(note: Note, selected: Boolean = false) {
 
         if (selected) classes += setOf("selected")
 
-        button {
+        button(classes = "note-item-open") {
             hxGet = "/notes/${note.id}"
             hxTarget = "#note-content"
             hxSwap = "innerHTML"
@@ -71,26 +81,26 @@ fun TagConsumer<*>.noteItem(note: Note, selected: Boolean = false) {
             +note.title
         }
 
-        button {
+        button(classes = "note-item-delete") {
             hxDelete = "/notes/${note.id}"
             hxSwap = "delete"
             hxTarget = "#$noteId"
             hxInclude = "#current-note-id"
 
-            +"Delete"
+            +"×"
         }
     }
 }
 
 fun TagConsumer<*>.noteContent(note: Note) {
-    article {
+    article(classes = "note-document") {
         hiddenInput {
             id = "current-note-id"
             name = "currentNoteId"
             value = note.id.toString()
         }
 
-        input {
+        input(classes = "note-title") {
             name = "title"
             value = note.title
 
@@ -99,14 +109,16 @@ fun TagConsumer<*>.noteContent(note: Note) {
             hxSwap = "none"
         }
 
-        note.blocks.forEach { block ->
-            noteBlock(note.id, block)
+        div(classes = "note-blocks") {
+            note.blocks.forEach { block ->
+                noteBlock(note.id, block)
+            }
         }
     }
 }
 
 fun TagConsumer<*>.noteBlock(noteId: Long, block: NoteBlock, isNewAdded: Boolean = false) {
-    div {
+    div(classes = "note-block") {
         val blockContainerId = "block-${block.blockId}"
         id = blockContainerId
         when (block) {
@@ -176,18 +188,22 @@ private fun TagConsumer<*>.textNoteBlock(
     block: NoteBlock.Text,
     autoFocus: Boolean = false,
 ) {
-    p {
-        val textAreaId = "block-input-${block.blockId}"
+    val textAreaId = "block-input-${block.blockId}"
 
-        textArea {
-            id = textAreaId
-            this.autoFocus = autoFocus
-            name = "text"
-            hxPost = "/notes/$noteId/blocks/${block.blockId}/text"
-            hxTrigger = "input changed delay:1s"
-            hxSwap = "none"
+    textArea(classes = "text-block") {
+        id = textAreaId
+        this.autoFocus = autoFocus
 
-            attributes["hx-on:keydown"] = """
+        rows = "1"
+        name = "text"
+        hxPost = "/notes/$noteId/blocks/${block.blockId}/text"
+        hxTrigger = "input changed delay:1s"
+        hxSwap = "none"
+
+        attributes["oninput"] =
+            "this.style.height='auto'; this.style.height=this.scrollHeight+'px';"
+
+        attributes["hx-on:keydown"] = """
                 if (event.key === 'Backspace' && this.value === '') {
                     event.preventDefault()
                     console.log(event.key)
@@ -252,8 +268,7 @@ private fun TagConsumer<*>.textNoteBlock(
                 }
             """.trimIndent()
 
-            +block.text
-        }
+        +block.text
     }
 }
 
@@ -262,23 +277,28 @@ private fun TagConsumer<*>.addBlockMenu(
     noteId: Long,
     blockId: Long
 ) {
-    details {
-        summary {
+    details(classes = "block-menu") {
+        summary(classes = "block-menu-trigger") {
+            attributes["aria-label"] = "Add block"
             +"+"
         }
 
-        button {
-            hxPost = "/notes/$noteId/blocks/${blockId}/after?type=text"
-            hxTarget = "#$blockContainerId"
-            hxSwap = "afterend"
-            +"Text"
-        }
+        div(classes = "block-menu-popup") {
+            button(classes = "block-menu-item") {
+                hxPost = "/notes/$noteId/blocks/$blockId/after?type=text"
+                hxTarget = "#$blockContainerId"
+                hxSwap = "afterend"
 
-        button {
-            hxPost = "/notes/$noteId/blocks/${blockId}/after?type=image"
-            hxTarget = "#$blockContainerId"
-            hxSwap = "afterend"
-            +"Image"
+                +"Text"
+            }
+
+            button(classes = "block-menu-item") {
+                hxPost = "/notes/$noteId/blocks/$blockId/after?type=image"
+                hxTarget = "#$blockContainerId"
+                hxSwap = "afterend"
+
+                +"Image"
+            }
         }
     }
 }

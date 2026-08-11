@@ -9,9 +9,7 @@ import kio.note.domain.Repository
 import kio.note.util.Config
 import kotlinx.html.*
 
-context(repository: Repository)
 suspend fun CallContext.noteMainPage() {
-    val notes = repository.getAllNoteMetaData()
     respondHtml {
         head {
             script(src = Config.HTMX_MIN_JS) { }
@@ -19,21 +17,16 @@ suspend fun CallContext.noteMainPage() {
             title { +"Knote" }
         }
 
-        body {
-            style = "display: flex; min-height: 100vh;"
-            aside {
-                style = "width: 280px;"
-
+        body(classes = "app") {
+            aside (classes = "sidebar") {
                 noteAsideMenu()
             }
 
-            main(classes = "page") {
-                style = "flex: 1;"
+            main(classes = "note-editor") {
                 id = "note-content"
 
                 noteMainContentEmpty()
             }
         }
-        footer { }
     }
 }
