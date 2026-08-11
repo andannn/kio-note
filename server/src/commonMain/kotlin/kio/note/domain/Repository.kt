@@ -190,7 +190,10 @@ class MockRepositoryImpl : Repository {
     }
 
     override suspend fun deleteNoteById(id: Long) {
-        notes.removeIf { it.id == id}
+        val index = notes.indexOfFirst { it.id == id }
+        if (index == -1) return
+
+        notes.removeAt(index)
     }
 
     override suspend fun addBlockAfter(

@@ -10,12 +10,23 @@ kotlin {
         }
     }
 
+    linuxX64 {
+        binaries {
+            executable {
+                entryPoint = "main"
+            }
+        }
+    }
+
     sourceSets {
         compilerOptions {
             freeCompilerArgs.set(listOf("-Xcontext-parameters"))
         }
         jvmMain.dependencies {
             implementation(libs.kio.poller.select)
+        }
+        linuxMain.dependencies {
+            implementation(libs.kio.poller.uring)
         }
         commonMain.dependencies {
             implementation(libs.kio.http)

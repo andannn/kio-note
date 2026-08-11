@@ -8,6 +8,7 @@ import kio.note.database.initDb
 import kio.note.domain.MockRepositoryImpl
 import kio.note.page.noteMainPage
 import kio.note.util.Env
+import kio.note.util.getEnv
 import kio.postgres.conn.PgConnectionPool
 import kio.postgres.conn.openPgConnection
 import kio.postgres.conn.useConnection
@@ -31,11 +32,11 @@ suspend fun noteServer(serverSocket: ServerSocket) {
 }
 
 private fun loadEnv() = Env(
-    postgresHost = System.getenv("POSTGRES_HOST") ?: "127.0.0.1",
-    postgresPort = System.getenv("POSTGRES_PORT")?.toIntOrNull() ?: 5432,
-    postgresUser = System.getenv("POSTGRES_USER") ?: "postgres",
-    postgresPassword = System.getenv("POSTGRES_PASSWORD") ?: "",
-    postgresDatabase = System.getenv("POSTGRES_DB") ?: "knote",
+    postgresHost = getEnv("POSTGRES_HOST") ?: "127.0.0.1",
+    postgresPort = getEnv("POSTGRES_PORT")?.toIntOrNull() ?: 5432,
+    postgresUser = getEnv("POSTGRES_USER") ?: "postgres",
+    postgresPassword = getEnv("POSTGRES_PASSWORD") ?: "",
+    postgresDatabase = getEnv("POSTGRES_DB") ?: "knote",
 )
 
 fun createPgPool(env: Env): PgConnectionPool {
