@@ -2,8 +2,10 @@ package kio.note
 
 import kio.async.io.ServerSocket
 import kio.http.Route
+import kio.http.currentLoggingBackend
 import kio.http.get
 import kio.http.httpServer
+import kio.http.newLogger
 import kio.http.staticResource
 import kio.note.database.initDb
 import kio.note.domain.MockRepositoryImpl
@@ -35,17 +37,17 @@ private suspend fun setupServer(
     block: suspend Route.(repo: Repository) -> Unit
 ) {
     if (isMock) {
-        val repo = MockRepositoryImpl()
         httpServer(
             serverSocket = serverSocket,
         ) {
+            val logger = currentLoggingBackend().newLogger("Repository")
+            val repo = MockRepositoryImpl(logger)
             block(repo)
         }
     } else {
         val pgPool = createPgPool(env)
         pgPool.useConnection { it.initDb() }
 
-        val repo = Repository(pgPool)
         httpServer(
             serverSocket = serverSocket,
             connectionWrapper = {
@@ -56,6 +58,8 @@ private suspend fun setupServer(
                 )
             },
         ) {
+            val logger = currentLoggingBackend().newLogger("Repository")
+            val repo = Repository(pgPool, logger)
             block(repo)
         }
     }

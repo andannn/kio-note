@@ -3,6 +3,16 @@ document.addEventListener('htmx:afterSwap', event => {
     focusAutoFocusBlock(event.target)
 })
 
+document.addEventListener('click', event => {
+    if (event.target.closest('.block-menu')) {
+        return
+    }
+
+    document.querySelectorAll('.block-menu[open]').forEach(menu => {
+        menu.removeAttribute('open')
+    })
+})
+
 function getBlockContainer(element) {
     return element.closest('.note-block')
 }
@@ -127,8 +137,7 @@ function handleTextBlockKeyDown(event, input) {
     }
 
     if (
-        event.key === 'Enter' &&
-        !event.shiftKey
+        event.key === 'Enter' && event.shiftKey
     ) {
         event.preventDefault()
 

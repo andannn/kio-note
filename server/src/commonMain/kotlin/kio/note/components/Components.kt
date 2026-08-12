@@ -225,8 +225,14 @@ private fun TagConsumer<*>.textNoteBlock(
     autoFocus: Boolean = false,
 ) {
     val textAreaId = "block-input-${block.blockId}"
-
-    textArea(classes = "text-block") {
+    val blockClass = when (block) {
+        is NoteBlock.Text.Content -> "text-block text-content"
+        is NoteBlock.Text.H1 -> "text-block text-t1"
+        is NoteBlock.Text.H2 -> "text-block text-t2"
+        is NoteBlock.Text.H3 -> "text-block text-t3"
+        is NoteBlock.Text.H4 -> "text-block text-t4"
+    }
+    textArea(classes = blockClass) {
         id = textAreaId
         this.autoFocus = autoFocus
 
@@ -248,6 +254,10 @@ private fun TagConsumer<*>.textNoteBlock(
 }
 
 private val blockMenu = listOf(
+    "h1",
+    "h2",
+    "h3",
+    "h4",
     "text",
     "image",
 )
@@ -273,6 +283,10 @@ private fun TagConsumer<*>.addBlockMenu(
                     attributes["onclick"] = "closeBlockMenu(this)"
 
                     when (item) {
+                        "h1" -> +"H1"
+                        "h2" -> +"H2"
+                        "h3" -> +"H3"
+                        "h4" -> +"H4"
                         "text" -> +"Text"
                         "image" -> +"Image"
                     }

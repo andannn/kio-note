@@ -65,7 +65,16 @@ data class NoteBlockEntity(
     val textContent: PgText?,
     @SerialName("image_url")
     val imageUrl: PgText?,
-)
+) {
+    companion object {
+        const val BLOCK_TYPE_TEXT = "text"
+        const val BLOCK_TYPE_IMAGE = "image"
+        const val BLOCK_TYPE_H1 = "h1"
+        const val BLOCK_TYPE_H2 = "h2"
+        const val BLOCK_TYPE_H3 = "h3"
+        const val BLOCK_TYPE_H4 = "h4"
+    }
+}
 
 @Serializable
 data class NotesEntity(
@@ -187,7 +196,7 @@ suspend fun PgConnection.updateContentForTextBlock(
         """
         update note_blocks
         set text_content = $1
-        where id = $2 and note_id = $3 and type = 'text'
+        where id = $2 and note_id = $3
         returning
            id,
            note_id,
