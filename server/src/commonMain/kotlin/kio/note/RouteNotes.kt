@@ -50,8 +50,8 @@ fun Route.notesRoute() {
 
 context(repo: Repository)
 private suspend fun CallContext.handleDeleteBlock() {
-    val noteId = parameters["id"]?.toLongOrNull()
-    val noteBlockId = parameters["blockId"]?.toLongOrNull()
+    val noteId = requestParameters["id"]?.toLongOrNull()
+    val noteBlockId = requestParameters["blockId"]?.toLongOrNull()
     if (noteId == null || noteBlockId == null) {
         respond(HttpStatusCode.BadRequest)
         return
@@ -63,8 +63,8 @@ private suspend fun CallContext.handleDeleteBlock() {
 
 context(repo: Repository)
 private suspend fun CallContext.handleUploadImageBlock() {
-    val noteId = parameters["id"]?.toLongOrNull()
-    val noteBlockId = parameters["blockId"]?.toLongOrNull()
+    val noteId = requestParameters["id"]?.toLongOrNull()
+    val noteBlockId = requestParameters["blockId"]?.toLongOrNull()
     if (noteId == null || noteBlockId == null) {
         respond(HttpStatusCode.BadRequest)
         return
@@ -98,8 +98,8 @@ private suspend fun CallContext.handleUploadImageBlock() {
 
 context(repo: Repository)
 private suspend fun CallContext.handleChangeTextBlock() {
-    val noteId = parameters["id"]?.toLongOrNull()
-    val noteBlockId = parameters["blockId"]?.toLongOrNull()
+    val noteId = requestParameters["id"]?.toLongOrNull()
+    val noteBlockId = requestParameters["blockId"]?.toLongOrNull()
     if (noteId == null || noteBlockId == null) {
         respond(HttpStatusCode.BadRequest)
         return
@@ -117,9 +117,9 @@ private suspend fun CallContext.handleChangeTextBlock() {
 
 context(repo: Repository)
 private suspend fun CallContext.handleAddBlockAfter() {
-    val type = parameters["type"]
-    val noteId = parameters["id"]?.toLongOrNull()
-    val noteBlockId = parameters["blockId"]?.toLongOrNull()
+    val type = requestParameters["type"]
+    val noteId = requestParameters["id"]?.toLongOrNull()
+    val noteBlockId = requestParameters["blockId"]?.toLongOrNull()
     if (type == null || noteId == null || noteBlockId == null) {
         respond(HttpStatusCode.BadRequest)
         return
@@ -169,7 +169,7 @@ private suspend fun CallContext.handleNewNote() {
 
 context(repo: Repository)
 private suspend fun CallContext.handleChangeTitle() {
-    val id = parameters["id"]?.toLongOrNull()
+    val id = requestParameters["id"]?.toLongOrNull()
     if (id == null) {
         respond(HttpStatusCode.BadRequest)
         return
@@ -199,8 +199,8 @@ private suspend fun CallContext.handleChangeTitle() {
 
 context(repo: Repository)
 private suspend fun CallContext.handleDeleteNote() {
-    val idToDelete = parameters["id"]?.toLongOrNull()
-    val currentNoteId = parameters["currentNoteId"]?.toLongOrNull()
+    val idToDelete = requestParameters["id"]?.toLongOrNull()
+    val currentNoteId = requestParameters["currentNoteId"]?.toLongOrNull()
     if (idToDelete == null) {
         respond(HttpStatusCode.BadRequest)
         return
@@ -224,7 +224,7 @@ private suspend fun CallContext.handleDeleteNote() {
 
 context(repo: Repository)
 private suspend fun CallContext.handleGetNote() {
-    val id = parameters["id"]?.toLongOrNull()
+    val id = requestParameters["id"]?.toLongOrNull()
     if (id == null) {
         respond(HttpStatusCode.BadRequest)
         return
