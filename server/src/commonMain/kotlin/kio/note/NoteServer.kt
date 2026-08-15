@@ -7,7 +7,6 @@ import kio.http.get
 import kio.http.httpServer
 import kio.http.newLogger
 import kio.http.staticResource
-import kio.note.database.initDb
 import kio.note.domain.MockRepositoryImpl
 import kio.note.domain.Repository
 import kio.note.page.noteMainPage
@@ -15,7 +14,6 @@ import kio.note.util.Env
 import kio.note.util.getEnv
 import kio.postgres.conn.PgConnectionPool
 import kio.postgres.conn.openPgConnection
-import kio.postgres.conn.useConnection
 import kio.tls.pem
 import kio.tls.withServerTls
 
@@ -46,7 +44,6 @@ private suspend fun setupServer(
         }
     } else {
         val pgPool = createPgPool(env)
-        pgPool.useConnection { it.initDb() }
 
         httpServer(
             serverSocket = serverSocket,

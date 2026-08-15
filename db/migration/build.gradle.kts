@@ -6,7 +6,7 @@ plugins {
 kotlin {
     jvm {
         mainRun {
-            mainClass.set("kio.note.ApplicationKt")
+            mainClass.set("MainKt")
         }
     }
 
@@ -17,11 +17,7 @@ kotlin {
             }
         }
     }
-
     sourceSets {
-        compilerOptions {
-            freeCompilerArgs.set(listOf("-Xcontext-parameters"))
-        }
         jvmMain.dependencies {
             implementation(libs.kio.poller.select)
         }
@@ -29,28 +25,18 @@ kotlin {
             implementation(libs.kio.poller.uring)
         }
         commonMain.dependencies {
-            implementation(libs.kio.http)
-            implementation(libs.kio.tls)
-            implementation(libs.kio.postgres.connection)
-            implementation(libs.kio.io)
-        }
-        commonTest.dependencies {
-            implementation(libs.kotlin.test)
             implementation(project(":db:schema"))
+            implementation(libs.kio.postgres.connection)
         }
     }
 }
 
-tasks.register<Sync>("prepareKnoteDist") {
+tasks.register<Sync>("prepareDBMigrationTool") {
     dependsOn("linkReleaseExecutableLinuxX64")
 
     from(layout.buildDirectory.dir("bin/linuxX64/releaseExecutable")) {
-        include("server.kexe")
-        rename("server.kexe", "knote")
-    }
-
-    from(rootProject.projectDir.resolve("resource")) {
-        into("resource")
+        include("migration.kexe")
+        rename("migration.kexe", "knote_db_migration")
     }
 
     into(layout.buildDirectory.dir("dist/knote"))

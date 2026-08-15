@@ -2,12 +2,16 @@ package kio.note.database
 
 import kio.async.PollerFactory
 import kio.async.runPollEventLoop
+import kio.note.db.migrations
 import kio.note.util.getEnv
 import kio.postgres.conn.PgConnection
 import kio.postgres.conn.openPgConnection
+import kio.postgres.migration.MigrationResult
+import kio.postgres.migration.migrate
 import kotlinx.coroutines.withTimeout
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.time.Duration.Companion.seconds
 
 abstract class DatabaseTest {
@@ -105,8 +109,17 @@ abstract class DatabaseTest {
                     password = password,
                     database = database,
                 )
-                conn.initDb(isTest = true)
-                conn.block()
+
+                assertIs<MigrationResult.Success>(conn.migrate(migrations))
+
+                try {
+                    conn.block()
+                } finally {
+                    conn.exec("drop table if exists schema_migrations cascade")
+                    conn.exec("drop table if exists notes cascade")
+                    conn.exec("drop table if exists note_blocks cascade")
+                }
+
                 conn.close()
             }
         }
