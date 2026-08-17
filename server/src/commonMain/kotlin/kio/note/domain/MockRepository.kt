@@ -29,6 +29,24 @@ class MockRepositoryImpl(private val logger: Logger) : Repository {
 
     private var nextNoteId = 3L
     private var nextBlockId = 2L
+
+    override suspend fun findUserByUsername(userName: String): User? {
+        return User(1, "Test")
+    }
+
+    override suspend fun verifyPassword(user: User, password: String): Boolean {
+        return true
+    }
+
+    override suspend fun createSession(id: Long): String {
+        return "asdf"
+    }
+
+    override suspend fun getSessionById(id: String): Session? {
+        return null
+//        return Session(1)
+    }
+
     override suspend fun createNewNote(): Note {
         val newNote = Note(nextNoteId++, title = "Untitled")
         notes.add(0, newNote)

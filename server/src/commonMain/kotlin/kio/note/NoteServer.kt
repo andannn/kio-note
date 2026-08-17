@@ -6,9 +6,13 @@ import kio.http.currentLoggingBackend
 import kio.http.get
 import kio.http.httpServer
 import kio.http.newLogger
+import kio.http.post
+import kio.http.respondText
+import kio.http.route
 import kio.http.staticResource
 import kio.note.domain.MockRepositoryImpl
 import kio.note.domain.Repository
+import kio.note.page.noteLoginPage
 import kio.note.page.noteMainPage
 import kio.note.util.Env
 import kio.note.util.getEnv
@@ -20,10 +24,15 @@ import kio.tls.withServerTls
 suspend fun noteServer(serverSocket: ServerSocket) {
     val env = loadEnv()
 
-    setupServer(isMock = false, serverSocket, env) { repo ->
+    setupServer(isMock = true, serverSocket, env) { repo ->
         with(repo) {
-            get("/") { call -> call.noteMainPage() }
-            notesRoute()
+            notesLogin()
+
+            inject(AuthSession()) {
+                get("/") { call -> call.noteMainPage() }
+                notesRoute()
+            }
+
             staticResource("/attachments", "data/uploads")
             staticResource("/", "resource")
         }

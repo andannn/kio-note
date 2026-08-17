@@ -40,6 +40,13 @@ enum class BlockType {
     }
 }
 
+data class User(
+    val id: Long,
+    val userName: String
+)
+
+data class Session(val userId: Long)
+
 data class Note(
     val id: Long,
     val title: String,
@@ -69,6 +76,13 @@ sealed interface NoteBlock {
 fun Repository(pgPool: PgConnectionPool, logger: Logger): Repository = RepositoryImpl(pgPool, logger)
 
 interface Repository {
+    // login
+    suspend fun findUserByUsername(userName: String): User?
+    suspend fun verifyPassword(user: User, password: String): Boolean
+    suspend fun createSession(id: Long): String
+    suspend fun getSessionById(id: String): Session?
+
+    // note
     suspend fun createNewNote(): Note
     suspend fun getAllNoteMetaData(): List<Note>
     suspend fun getNoteById(id: Long): Note?
@@ -84,6 +98,22 @@ private class RepositoryImpl(
     private val pgPool: PgConnectionPool,
     private val logger: Logger
 ) : Repository {
+    override suspend fun findUserByUsername(userName: String): User {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun verifyPassword(user: User, password: String): Boolean {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun createSession(id: Long): String {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun getSessionById(id: String): Session? {
+        TODO("Not yet implemented")
+    }
+
     override suspend fun createNewNote(): Note {
         return pgPool.useConnection { it.createNote("Untitled") }.toNote()
     }
