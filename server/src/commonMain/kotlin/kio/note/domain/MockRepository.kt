@@ -31,18 +31,18 @@ class MockRepositoryImpl(private val logger: Logger) : Repository {
     private var nextBlockId = 2L
 
     override suspend fun findUserByUsername(userName: String): User? {
-        return User(1, "Test")
+        return User(1, "Test", "has")
     }
 
     override suspend fun verifyPassword(user: User, password: String): Boolean {
         return true
     }
 
-    override suspend fun createSession(id: Long): String {
+    override suspend fun createSession(userId: Long): String {
         return "asdf"
     }
 
-    override suspend fun getSessionById(id: String): Session? {
+    override suspend fun getSessionById(sessionId: String): Session? {
         return null
 //        return Session(1)
     }

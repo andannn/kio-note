@@ -4,19 +4,24 @@ import kio.async.AsyncRawSource
 import kio.http.Logger
 import kio.http.trace
 import kio.note.database.NoteBlockEntity
+import kio.note.database.NoteUserEntity
 import kio.note.database.NotesEntity
 import kio.note.database.changeNoteTitle
 import kio.note.database.createBlockAfter
 import kio.note.database.createNote
+import kio.note.database.createSession
 import kio.note.database.deleteBlockById
 import kio.note.database.deleteNoteById
 import kio.note.database.getAllNote
 import kio.note.database.getNoteBlocksById
 import kio.note.database.getNoteBlocksByNoteBlockId
 import kio.note.database.getNoteById
+import kio.note.database.getUserByUsername
+import kio.note.database.getUserIdBySessionId
 import kio.note.database.updateContentForTextBlock
 import kio.note.database.updateImageBlock
 import kio.note.util.Config
+import kio.note.util.hashPassword
 import kio.note.util.saveFileToPath
 import kio.postgres.conn.PgConnectionPool
 import kio.postgres.conn.useConnection
@@ -42,7 +47,8 @@ enum class BlockType {
 
 data class User(
     val id: Long,
-    val userName: String
+    val username: String,
+    val passwordHash: String
 )
 
 data class Session(val userId: Long)
@@ -79,8 +85,8 @@ interface Repository {
     // login
     suspend fun findUserByUsername(userName: String): User?
     suspend fun verifyPassword(user: User, password: String): Boolean
-    suspend fun createSession(id: Long): String
-    suspend fun getSessionById(id: String): Session?
+    suspend fun createSession(userId: Long): String
+    suspend fun getSessionById(sessionId: String): Session?
 
     // note
     suspend fun createNewNote(): Note
@@ -98,20 +104,27 @@ private class RepositoryImpl(
     private val pgPool: PgConnectionPool,
     private val logger: Logger
 ) : Repository {
-    override suspend fun findUserByUsername(userName: String): User {
-        TODO("Not yet implemented")
+    override suspend fun findUserByUsername(userName: String): User? {
+        return pgPool.useConnection { it.getUserByUsername(userName) }?.toUser()
     }
 
     override suspend fun verifyPassword(user: User, password: String): Boolean {
-        TODO("Not yet implemented")
+        return hashPassword(password) == user.passwordHash
     }
 
-    override suspend fun createSession(id: Long): String {
-        TODO("Not yet implemented")
+    override suspend fun createSession(userId: Long): String {
+        val session = generateSessionId()
+        pgPool.useConnection { it.createSession(userId, session) }
+        return session
     }
 
-    override suspend fun getSessionById(id: String): Session? {
-        TODO("Not yet implemented")
+    private fun generateSessionId(): String {
+        return Uuid.random().toString()
+    }
+
+    override suspend fun getSessionById(sessionId: String): Session? {
+        val userId = pgPool.useConnection { it.getUserIdBySessionId(sessionId) } ?: return null
+        return Session(userId)
     }
 
     override suspend fun createNewNote(): Note {
@@ -192,6 +205,7 @@ private class RepositoryImpl(
     }
 }
 
+private fun NoteUserEntity.toUser(): User = User(id = id, username = username, passwordHash = passwordHash)
 private fun NotesEntity.toNote(): Note = Note(id = id, title = title)
 
 private fun NoteBlockEntity.toNoteBlock(): NoteBlock = when (type) {

@@ -12,17 +12,8 @@ import kotlinx.coroutines.withContext
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
 
-
 suspend fun requireSession(): Session =
     checkNotNull(currentCoroutineContext()[CoroutineSession]?.session)
-
-data class CoroutineSession(
-    val session: Session
-) : AbstractCoroutineContextElement(CoroutineSession) {
-    companion object Key : CoroutineContext.Key<CoroutineSession>
-
-    override fun toString(): String = "CoroutineSession(${session})"
-}
 
 context(repo: Repository)
 fun AuthSession() = CallInterceptor { call, proceed ->
@@ -39,6 +30,14 @@ fun AuthSession() = CallInterceptor { call, proceed ->
             proceed(call)
         }
     }
+}
+
+private data class CoroutineSession(
+    val session: Session
+) : AbstractCoroutineContextElement(CoroutineSession) {
+    companion object Key : CoroutineContext.Key<CoroutineSession>
+
+    override fun toString(): String = "CoroutineSession(${session})"
 }
 
 context(repo: Repository)

@@ -1,6 +1,7 @@
 [versions]
 kotlin = "2.4.10"
 kio = "0.0.1"
+hash = "0.5.6"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -11,6 +12,7 @@ kio-postgres-migration = { module = "io.github.kio-labs:postgres-migration", ver
 kio-io = { module = "io.github.kio-labs:async-io", version.ref = "kio" }
 kio-poller-select = { module = "io.github.kio-labs:poller-jvm-select", version.ref = "kio" }
 kio-poller-uring = { module = "io.github.kio-labs:poller-linux-uring", version.ref = "kio" }
+hash-sha2 = { group = "org.kotlincrypto.hash", name = "sha2", version.ref = "hash" }
 
 [plugins]
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }

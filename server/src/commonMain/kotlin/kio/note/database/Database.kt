@@ -4,7 +4,6 @@ import kio.postgres.types.PgInt8
 import kio.postgres.types.PgText
 import kio.postgres.types.PgTimestampTz
 import kio.postgres.conn.PgConnection
-import kio.postgres.conn.exec
 import kio.postgres.conn.param
 import kio.postgres.conn.query
 import kio.postgres.types.PostgresInt8Serializer
@@ -51,6 +50,98 @@ data class NotesEntity(
     @SerialName("update_at")
     val updateAt: PgTimestampTz,
 )
+
+@Serializable
+data class NoteUserEntity(
+    @SerialName("id")
+    val id: PgInt8,
+    @SerialName("username")
+    val username: PgText,
+    @SerialName("password_hash")
+    val passwordHash: PgText,
+    @SerialName("create_at")
+    val createAt: PgTimestampTz,
+)
+
+@Serializable
+data class NoteSessionEntity(
+    @SerialName("id")
+    val id: PgText,
+    @SerialName("user_id")
+    val userId: PgText,
+    @SerialName("create_at")
+    val createAt: PgTimestampTz,
+)
+
+suspend fun PgConnection.createUser(userName: String, passwordHash: String): NoteUserEntity {
+    val ret: Flow<NoteUserEntity> = query(
+        """
+        insert into users (
+            username,
+            password_hash
+        )
+        values ($1, $2)
+        returning
+            id,
+            username,
+            password_hash,
+            create_at
+        """.trimIndent()
+    ) {
+        param(userName, PostgresTextSerializer)
+        param(passwordHash, PostgresTextSerializer)
+    }
+    return ret.firstOrNull() ?: error("user create failed")
+}
+
+suspend fun PgConnection.createSession(userId: Long, sessionId: String) {
+    val ret = exec(
+        """
+            insert into sessions(
+                id,
+                user_id
+            )
+            values ($1, $2)
+            """.trimIndent()
+    ) {
+        param(sessionId, PostgresTextSerializer)
+        param(userId, PostgresInt8Serializer)
+    }
+
+    if (ret != "INSERT 0 1") {
+        error("create session failed $ret")
+    }
+}
+
+suspend fun PgConnection.getUserIdBySessionId(sessionId: String): Long? {
+    @Serializable
+    class UserId(val user_id: PgInt8)
+
+    return query<UserId>(
+        """
+            select user_id
+            from sessions
+            where id = $1
+            limit 1
+            """.trimIndent()
+    ) {
+        param(sessionId, PostgresTextSerializer)
+    }.firstOrNull()?.user_id
+}
+
+suspend fun PgConnection.getUserByUsername(userName: String): NoteUserEntity? {
+    val ret: Flow<NoteUserEntity> = query(
+        """
+        select *
+        from users
+        where username = $1
+        limit 1
+        """.trimIndent()
+    ) {
+        param(userName, PostgresTextSerializer)
+    }
+    return ret.firstOrNull()
+}
 
 suspend fun PgConnection.deleteNoteById(id: Long) {
     exec("delete from notes where id = $1") {

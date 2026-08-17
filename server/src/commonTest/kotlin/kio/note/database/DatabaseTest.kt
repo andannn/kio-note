@@ -91,6 +91,21 @@ abstract class DatabaseTest {
         assertEquals("new url", newBlock?.imageUrl)
     }
 
+    @Test
+    fun getUserByUsernameTest() = withTestPgDatabase {
+        val user = createUser("userA", "pass")
+        assertEquals("userA", user.username)
+        assertEquals("pass", user.passwordHash)
+        assertEquals(user, getUserByUsername(user.username))
+    }
+
+    @Test
+    fun sessionTest() = withTestPgDatabase {
+        val user = createUser(userName = "1", passwordHash = "pas")
+        createSession(user.id, "12345")
+        assertEquals(user.id, getUserIdBySessionId("12345"))
+    }
+
     fun withTestPgDatabase(
         block: suspend PgConnection.() -> Unit
     ) =
@@ -109,13 +124,18 @@ abstract class DatabaseTest {
                     password = password,
                     database = database,
                 )
-
-                assertIs<MigrationResult.Success>(conn.migrate(migrations))
+                val result = conn.migrate(migrations)
+                if (result is MigrationResult.Error) {
+                    println(result)
+                }
+                assertIs<MigrationResult.Success>(result)
 
                 try {
                     conn.block()
                 } finally {
                     conn.exec("drop table if exists schema_migrations cascade")
+                    conn.exec("drop table if exists users cascade")
+                    conn.exec("drop table if exists sessions cascade")
                     conn.exec("drop table if exists notes cascade")
                     conn.exec("drop table if exists note_blocks cascade")
                 }

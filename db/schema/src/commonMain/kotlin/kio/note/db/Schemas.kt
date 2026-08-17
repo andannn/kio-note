@@ -26,3 +26,23 @@ create index if not exists idx_note_blocks_note_order
 on note_blocks(note_id, sort_order);
     """.trimIndent()
 )
+
+val migration_2 = Migration(
+    version = 2,
+    name = "migration_2",
+    sql = """
+create table users (
+    id bigserial primary key,
+    username text not null unique,
+    password_hash text not null,
+    create_at timestamptz not null default now()
+);
+create table sessions (
+    id text primary key,
+    user_id bigint not null
+        references users(id)
+        on delete cascade,
+    create_at timestamptz not null default now()
+);
+    """.trimIndent()
+)

@@ -30,6 +30,7 @@ kotlin {
         }
         commonMain.dependencies {
             implementation(libs.kio.http)
+            implementation(libs.hash.sha2)
             implementation(libs.kio.tls)
             implementation(libs.kio.postgres.connection)
             implementation(libs.kio.io)

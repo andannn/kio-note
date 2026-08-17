@@ -24,7 +24,7 @@ import kio.tls.withServerTls
 suspend fun noteServer(serverSocket: ServerSocket) {
     val env = loadEnv()
 
-    setupServer(isMock = true, serverSocket, env) { repo ->
+    setupServer(isMock = false, serverSocket, env) { repo ->
         with(repo) {
             notesLogin()
 
@@ -56,13 +56,13 @@ private suspend fun setupServer(
 
         httpServer(
             serverSocket = serverSocket,
-            connectionWrapper = {
-                withServerTls(
-                    env.tlsCert.pem,
-                    env.tlsKey.pem,
-                    supportAlpnProtocols = listOf("h2", "http/1.1")
-                )
-            },
+//            connectionWrapper = {
+//                withServerTls(
+//                    env.tlsCert.pem,
+//                    env.tlsKey.pem,
+//                    supportAlpnProtocols = listOf("h2", "http/1.1")
+//                )
+//            },
         ) {
             val logger = currentLoggingBackend().newLogger("Repository")
             val repo = Repository(pgPool, logger)
