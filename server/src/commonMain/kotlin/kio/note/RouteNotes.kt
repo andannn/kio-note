@@ -144,7 +144,7 @@ private suspend fun CallContext.handleAddBlockAfter() {
 
 context(repo: Repository)
 private suspend fun CallContext.handleGetAllNotes() {
-    val notes = repo.getAllNoteMetaData()
+    val notes = repo.getAllNoteMetaData(requireSession().userId)
     respondHtml {
         noteList(notes)
     }
@@ -152,7 +152,7 @@ private suspend fun CallContext.handleGetAllNotes() {
 
 context(repo: Repository)
 private suspend fun CallContext.handleNewNote() {
-    val note = repo.createNewNote()
+    val note = repo.createNewNoteForUser(requireSession().userId)
     val noteBlock = repo.addBlockAfter(noteId = note.id, blockId = null, type = BlockType.TEXT)!!
     val newNote = note.copy(blocks = mutableListOf(noteBlock))
     respondHtml {

@@ -27,6 +27,7 @@ kotlin {
         commonMain.dependencies {
             implementation(project(":db:schema"))
             implementation(libs.kio.postgres.connection)
+            implementation(libs.kio.io)
         }
     }
 }

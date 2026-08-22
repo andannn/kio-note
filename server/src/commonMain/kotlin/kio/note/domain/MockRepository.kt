@@ -47,13 +47,13 @@ class MockRepositoryImpl(private val logger: Logger) : Repository {
 //        return Session(1)
     }
 
-    override suspend fun createNewNote(): Note {
+    override suspend fun createNewNoteForUser(userId: Long): Note {
         val newNote = Note(nextNoteId++, title = "Untitled")
         notes.add(0, newNote)
         return newNote
     }
 
-    override suspend fun getAllNoteMetaData(): List<Note> {
+    override suspend fun getAllNoteMetaData(userId: Long): List<Note> {
         return notes
     }
 

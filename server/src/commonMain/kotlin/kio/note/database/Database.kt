@@ -2,7 +2,6 @@ package kio.note.database
 
 import kio.postgres.types.PgInt8
 import kio.postgres.types.PgText
-import kio.postgres.types.PgTimestampTz
 import kio.postgres.conn.PgConnection
 import kio.postgres.conn.param
 import kio.postgres.conn.query
@@ -13,65 +12,6 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.toCollection
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-
-@Serializable
-data class NoteBlockEntity(
-    @SerialName("id")
-    val id: PgInt8,
-    @SerialName("note_id")
-    val noteId: PgInt8,
-    @SerialName("type")
-    val type: PgText,
-    @SerialName("sort_order")
-    val sortOrder: PgInt8,
-    @SerialName("text_content")
-    val textContent: PgText?,
-    @SerialName("image_url")
-    val imageUrl: PgText?,
-) {
-    companion object {
-        const val BLOCK_TYPE_TEXT = "text"
-        const val BLOCK_TYPE_IMAGE = "image"
-        const val BLOCK_TYPE_H1 = "h1"
-        const val BLOCK_TYPE_H2 = "h2"
-        const val BLOCK_TYPE_H3 = "h3"
-        const val BLOCK_TYPE_H4 = "h4"
-    }
-}
-
-@Serializable
-data class NotesEntity(
-    @SerialName("id")
-    val id: PgInt8,
-    @SerialName("title")
-    val title: PgText,
-    @SerialName("create_at")
-    val createAt: PgTimestampTz,
-    @SerialName("update_at")
-    val updateAt: PgTimestampTz,
-)
-
-@Serializable
-data class NoteUserEntity(
-    @SerialName("id")
-    val id: PgInt8,
-    @SerialName("username")
-    val username: PgText,
-    @SerialName("password_hash")
-    val passwordHash: PgText,
-    @SerialName("create_at")
-    val createAt: PgTimestampTz,
-)
-
-@Serializable
-data class NoteSessionEntity(
-    @SerialName("id")
-    val id: PgText,
-    @SerialName("user_id")
-    val userId: PgText,
-    @SerialName("create_at")
-    val createAt: PgTimestampTz,
-)
 
 suspend fun PgConnection.createUser(userName: String, passwordHash: String): NoteUserEntity {
     val ret: Flow<NoteUserEntity> = query(
@@ -149,15 +89,16 @@ suspend fun PgConnection.deleteNoteById(id: Long) {
     }
 }
 
-suspend fun PgConnection.createNote(title: PgText): NotesEntity {
+suspend fun PgConnection.createNoteForUser(title: PgText, userId: Long): NotesEntity {
     val ret: Flow<NotesEntity> = query(
         """
-            insert into notes(title)
-            values ($1)
-            returning id, title, create_at, update_at
+            insert into notes(title, user_id)
+            values ($1, $2)
+            returning id, title, create_at, update_at, user_id
         """.trimIndent()
     ) {
         param(title, PostgresTextSerializer)
+        param(userId, PostgresInt8Serializer)
     }
     return ret.firstOrNull() ?: error("note create failed")
 }
@@ -235,8 +176,10 @@ private suspend fun PgConnection.findInsertSortOrder(noteId: Long, afterBlockId:
     return nextOrder
 }
 
-suspend fun PgConnection.getAllNote(): List<NotesEntity> {
-    val ret: Flow<NotesEntity> = query("select * from notes")
+suspend fun PgConnection.getAllNote(userId: Long): List<NotesEntity> {
+    val ret: Flow<NotesEntity> = query("select * from notes where user_id = $1") {
+        param(userId, PostgresInt8Serializer)
+    }
     val list = mutableListOf<NotesEntity>()
     ret.toCollection(list)
     return list
@@ -275,7 +218,7 @@ suspend fun PgConnection.changeNoteTitle(noteId: PgInt8, title: PgText): NotesEn
         update notes
         set title = $2, update_at = now()
         where id = $1
-        returning id, title, create_at, update_at
+        returning id, title, create_at, update_at, user_id
         """.trimIndent()
     ) {
         param(noteId, PostgresInt8Serializer)

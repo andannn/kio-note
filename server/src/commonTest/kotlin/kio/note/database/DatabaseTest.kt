@@ -1,9 +1,10 @@
 package kio.note.database
 
 import kio.async.PollerFactory
+import kio.async.io.getEnv
 import kio.async.runPollEventLoop
+import kio.note.db.dropAllTables
 import kio.note.db.migrations
-import kio.note.util.getEnv
 import kio.postgres.conn.PgConnection
 import kio.postgres.conn.openPgConnection
 import kio.postgres.migration.MigrationResult
@@ -19,20 +20,20 @@ abstract class DatabaseTest {
 
     @Test
     fun getNoteByIdTest() = withTestPgDatabase {
-        val note = createNote("new note")
+        val note = createNoteForUser("new note", 1)
         assertEquals("new note", getNoteById(note.id)?.title)
     }
 
     @Test
     fun deleteNoteByIdTest() = withTestPgDatabase {
-        val note = createNote("new note")
+        val note = createNoteForUser("new note", 1)
         deleteNoteById(note.id)
         assertEquals(null, getNoteById(note.id))
     }
 
     @Test
     fun changeNoteTitleTest() = withTestPgDatabase {
-        val note = createNote("new note")
+        val note = createNoteForUser("new note", 1)
         val newNote = changeNoteTitle(note.id, "new title")
         assertEquals("new title", newNote?.title)
         assertEquals("new title", getNoteById(note.id)?.title)
@@ -40,7 +41,7 @@ abstract class DatabaseTest {
 
     @Test
     fun updateContentForTextBlockTest() = withTestPgDatabase {
-        val note = createNote("new note")
+        val note = createNoteForUser("new note", 1)
         val block = createBlockAfter(note.id, "text", null)
         val ret = updateContentForTextBlock(note.id, noteBlockId = block.id, "new content")
         assertEquals("new content", ret?.textContent)
@@ -48,13 +49,13 @@ abstract class DatabaseTest {
 
     @Test
     fun getAllNoteTest() = withTestPgDatabase {
-        val note = createNote("new note")
-        assertEquals(1, getAllNote().size)
+        val note = createNoteForUser("new note", 1)
+        assertEquals(1, getAllNote(userId = 1).size)
     }
 
     @Test
     fun deleteBlock() = withTestPgDatabase {
-        val note = createNote("new note")
+        val note = createNoteForUser("new note", 1)
         assertEquals(0, getNoteBlocksById(note.id).size)
         val block1 = createBlockAfter(note.id, "text", null)
         assertEquals(1, getNoteBlocksById(note.id).size)
@@ -64,7 +65,7 @@ abstract class DatabaseTest {
 
     @Test
     fun getNoteBlocksByNoteBlockIdTest() = withTestPgDatabase {
-        val note = createNote("new note")
+        val note = createNoteForUser("new note", 1)
         assertEquals(0, getNoteBlocksById(note.id).size)
         val block1 = createBlockAfter(note.id, "text", null)
         assertEquals(block1, getNoteBlocksByNoteBlockId(noteBlockId = block1.id))
@@ -72,7 +73,7 @@ abstract class DatabaseTest {
 
     @Test
     fun insertNoteBlockBetweenTest() = withTestPgDatabase {
-        val note = createNote("new note")
+        val note = createNoteForUser("new note", 1)
         val block1 = createBlockAfter(note.id, "text", null)
         assertEquals(1000, block1.sortOrder)
         val block2 = createBlockAfter(note.id, "text", block1.id)
@@ -85,7 +86,7 @@ abstract class DatabaseTest {
 
     @Test
     fun updateImageUrlTest() = withTestPgDatabase {
-        val note = createNote("new note")
+        val note = createNoteForUser("new note", 1)
         val block1 = createBlockAfter(note.id, "text", null)
         val newBlock = updateImageBlock(block1.id, "new url")
         assertEquals("new url", newBlock?.imageUrl)
@@ -93,7 +94,9 @@ abstract class DatabaseTest {
 
     @Test
     fun getUserByUsernameTest() = withTestPgDatabase {
+        println("JQN #")
         val user = createUser("userA", "pass")
+        println("JQN $user")
         assertEquals("userA", user.username)
         assertEquals("pass", user.passwordHash)
         assertEquals(user, getUserByUsername(user.username))
@@ -133,11 +136,7 @@ abstract class DatabaseTest {
                 try {
                     conn.block()
                 } finally {
-                    conn.exec("drop table if exists schema_migrations cascade")
-                    conn.exec("drop table if exists users cascade")
-                    conn.exec("drop table if exists sessions cascade")
-                    conn.exec("drop table if exists notes cascade")
-                    conn.exec("drop table if exists note_blocks cascade")
+                    conn.dropAllTables()
                 }
 
                 conn.close()

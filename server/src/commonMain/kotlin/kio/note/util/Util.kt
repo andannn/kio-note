@@ -7,8 +7,6 @@ import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import org.kotlincrypto.hash.sha2.SHA256
 
-expect fun getEnv(key: String): String?
-
 suspend fun AsyncRawSource.saveFileToPath(path: String) {
     val filePath = Path(path)
 

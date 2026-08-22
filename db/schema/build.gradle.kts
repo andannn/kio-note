@@ -16,6 +16,11 @@ kotlin {
         }
         commonMain.dependencies {
             api(libs.kio.postgres.migration)
+            api(libs.kio.postgres.connection)
+            implementation(libs.kio.io)
+        }
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
         }
     }
 }

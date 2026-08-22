@@ -29,6 +29,7 @@ kotlin {
             implementation(libs.kio.poller.uring)
         }
         commonMain.dependencies {
+            implementation(project(":db:schema"))
             implementation(libs.kio.http)
             implementation(libs.hash.sha2)
             implementation(libs.kio.tls)
@@ -37,7 +38,6 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
-            implementation(project(":db:schema"))
         }
     }
 }

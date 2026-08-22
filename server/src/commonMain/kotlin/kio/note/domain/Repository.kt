@@ -8,7 +8,7 @@ import kio.note.database.NoteUserEntity
 import kio.note.database.NotesEntity
 import kio.note.database.changeNoteTitle
 import kio.note.database.createBlockAfter
-import kio.note.database.createNote
+import kio.note.database.createNoteForUser
 import kio.note.database.createSession
 import kio.note.database.deleteBlockById
 import kio.note.database.deleteNoteById
@@ -89,8 +89,8 @@ interface Repository {
     suspend fun getSessionById(sessionId: String): Session?
 
     // note
-    suspend fun createNewNote(): Note
-    suspend fun getAllNoteMetaData(): List<Note>
+    suspend fun createNewNoteForUser(userId: Long): Note
+    suspend fun getAllNoteMetaData(userId: Long): List<Note>
     suspend fun getNoteById(id: Long): Note?
     suspend fun changeNoteTitleById(id: Long, title: String): Note?
     suspend fun deleteNoteById(id: Long)
@@ -127,12 +127,12 @@ private class RepositoryImpl(
         return Session(userId)
     }
 
-    override suspend fun createNewNote(): Note {
-        return pgPool.useConnection { it.createNote("Untitled") }.toNote()
+    override suspend fun createNewNoteForUser(userId: Long): Note {
+        return pgPool.useConnection { it.createNoteForUser("Untitled", userId) }.toNote()
     }
 
-    override suspend fun getAllNoteMetaData(): List<Note> {
-        return pgPool.useConnection { it.getAllNote() }.map { it.toNote() }
+    override suspend fun getAllNoteMetaData(userId: Long): List<Note> {
+        return pgPool.useConnection { it.getAllNote(userId) }.map { it.toNote() }
     }
 
     override suspend fun getNoteById(id: Long): Note? {

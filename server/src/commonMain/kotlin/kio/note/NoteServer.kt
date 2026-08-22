@@ -1,6 +1,7 @@
 package kio.note
 
 import kio.async.io.ServerSocket
+import kio.async.io.getEnv
 import kio.http.Route
 import kio.http.currentLoggingBackend
 import kio.http.get
@@ -15,7 +16,6 @@ import kio.note.domain.Repository
 import kio.note.page.noteLoginPage
 import kio.note.page.noteMainPage
 import kio.note.util.Env
-import kio.note.util.getEnv
 import kio.postgres.conn.PgConnectionPool
 import kio.postgres.conn.openPgConnection
 import kio.tls.pem
