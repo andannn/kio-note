@@ -50,7 +50,7 @@ tasks.register<Sync>("prepareKnoteDist") {
         rename("server.kexe", "knote")
     }
 
-    from(rootProject.projectDir.resolve("resource")) {
+    from(layout.projectDirectory.dir("resource")) {
         into("resource")
     }
 

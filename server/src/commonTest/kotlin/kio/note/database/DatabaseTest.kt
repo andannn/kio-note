@@ -94,9 +94,7 @@ abstract class DatabaseTest {
 
     @Test
     fun getUserByUsernameTest() = withTestPgDatabase {
-        println("JQN #")
         val user = createUser("userA", "pass")
-        println("JQN $user")
         assertEquals("userA", user.username)
         assertEquals("pass", user.passwordHash)
         assertEquals(user, getUserByUsername(user.username))
@@ -127,6 +125,7 @@ abstract class DatabaseTest {
                     password = password,
                     database = database,
                 )
+                conn.dropAllTables()
                 val result = conn.migrate(migrations)
                 if (result is MigrationResult.Error) {
                     println(result)

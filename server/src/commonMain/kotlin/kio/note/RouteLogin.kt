@@ -6,8 +6,11 @@ import kio.async.AsyncRawSource
 import kio.http.CallContext
 import kio.http.Route
 import kio.http.appendCookie
+import kio.http.currentLogger
+import kio.http.currentLoggerOrNull
 import kio.http.delete
 import kio.http.get
+import kio.http.info
 import kio.http.patch
 import kio.http.post
 import kio.http.receiveFormParameters
@@ -47,8 +50,11 @@ private suspend fun CallContext.handleLogin() {
         respondLoginError("Username and password are required.")
         return
     }
+
     val user = repo.findUserByUsername(username)
+
     if (user == null || !repo.verifyPassword(user, password)) {
+        currentLogger().info("Invalid username or password: user=$user, username=$username, password=$password")
         respondLoginError("Invalid username or password.")
         return
     }

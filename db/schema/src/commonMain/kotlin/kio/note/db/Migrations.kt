@@ -51,6 +51,7 @@ create table users (
     password_hash text not null,
     create_at timestamptz not null default now()
 );
+
 create table sessions (
     id text primary key,
     user_id bigint not null
@@ -58,18 +59,25 @@ create table sessions (
         on delete cascade,
     create_at timestamptz not null default now()
 );
+
 insert into users (
-    id,
     username,
     password_hash
 )
-values (1, 'preset', '8d969eef6ecad3c29a3a629280e686cff8ca2a4a8e0c6c3f5f5a86aff3ca120');
+values (
+    'preset',
+    '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92'
+);
 
 alter table notes
 add column user_id bigint;
 
 update notes
-set user_id = 1
+set user_id = (
+    select id
+    from users
+    where username = 'preset'
+)
 where user_id is null;
 
 alter table notes

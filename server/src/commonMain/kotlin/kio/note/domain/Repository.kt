@@ -2,6 +2,7 @@ package kio.note.domain
 
 import kio.async.AsyncRawSource
 import kio.http.Logger
+import kio.http.info
 import kio.http.trace
 import kio.note.database.NoteBlockEntity
 import kio.note.database.NoteUserEntity
@@ -109,10 +110,18 @@ private class RepositoryImpl(
     }
 
     override suspend fun verifyPassword(user: User, password: String): Boolean {
-        return hashPassword(password) == user.passwordHash
+        val actualHash = hashPassword(password)
+
+        println("password length=${password.length}")
+        println("password bytes=${password.encodeToByteArray().toList()}")
+        println("actualHash=$actualHash")
+        println("expectedHash=${user.passwordHash}")
+
+        return actualHash == user.passwordHash
     }
 
     override suspend fun createSession(userId: Long): String {
+        logger.info("createSession for user $userId")
         val session = generateSessionId()
         pgPool.useConnection { it.createSession(userId, session) }
         return session

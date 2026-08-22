@@ -2,39 +2,37 @@ package kio.note
 
 import kio.async.io.ServerSocket
 import kio.async.io.getEnv
-import kio.http.Route
-import kio.http.currentLoggingBackend
-import kio.http.get
-import kio.http.httpServer
-import kio.http.newLogger
-import kio.http.post
-import kio.http.respondText
-import kio.http.route
-import kio.http.staticResource
+import kio.http.*
 import kio.note.domain.MockRepositoryImpl
 import kio.note.domain.Repository
-import kio.note.page.noteLoginPage
 import kio.note.page.noteMainPage
 import kio.note.util.Env
 import kio.postgres.conn.PgConnectionPool
 import kio.postgres.conn.openPgConnection
 import kio.tls.pem
 import kio.tls.withServerTls
+import kotlinx.coroutines.withContext
+import kotlin.uuid.Uuid
 
 suspend fun noteServer(serverSocket: ServerSocket) {
     val env = loadEnv()
 
     setupServer(isMock = false, serverSocket, env) { repo ->
-        with(repo) {
-            notesLogin()
+        context(repo) {
+            inject(
+                CallId { Uuid.random().toString() },
+                LoggerInterceptor()
+            ) {
+                notesLogin()
 
-            inject(AuthSession()) {
-                get("/") { call -> call.noteMainPage() }
-                notesRoute()
+                inject(AuthSession()) {
+                    get("/") { call -> call.noteMainPage() }
+                    notesRoute()
+                }
+
+                staticResource("/attachments", "data/uploads")
+                staticResource("/", "resource")
             }
-
-            staticResource("/attachments", "data/uploads")
-            staticResource("/", "resource")
         }
     }
 }
@@ -56,13 +54,13 @@ private suspend fun setupServer(
 
         httpServer(
             serverSocket = serverSocket,
-//            connectionWrapper = {
-//                withServerTls(
-//                    env.tlsCert.pem,
-//                    env.tlsKey.pem,
-//                    supportAlpnProtocols = listOf("h2", "http/1.1")
-//                )
-//            },
+            connectionWrapper = {
+                withServerTls(
+                    env.tlsCert.pem,
+                    env.tlsKey.pem,
+                    supportAlpnProtocols = listOf("h2", "http/1.1")
+                )
+            },
         ) {
             val logger = currentLoggingBackend().newLogger("Repository")
             val repo = Repository(pgPool, logger)
@@ -90,5 +88,12 @@ private fun createPgPool(env: Env): PgConnectionPool {
             env.postgresPassword,
             env.postgresDatabase,
         )
+    }
+}
+
+private fun LoggerInterceptor(): CallInterceptor = CallInterceptor { context, proceed ->
+    val newLogger = currentLoggingBackend().newLogger("Call", mapOf("CallId" to currentCallId()))
+    withContext(CoroutineLogger(newLogger)) {
+        proceed(context)
     }
 }
