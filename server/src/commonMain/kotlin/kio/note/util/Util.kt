@@ -1,8 +1,8 @@
 package kio.note.util
 
+import kio.async.AsyncRawSink
 import kio.async.AsyncRawSource
 import kio.async.buffered
-import kio.async.io.openFileSink
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import org.kotlincrypto.hash.sha2.SHA256
@@ -14,7 +14,7 @@ suspend fun AsyncRawSource.saveFileToPath(path: String) {
         SystemFileSystem.createDirectories(parent)
     }
 
-    val sink = openFileSink(path).buffered()
+    val sink = fileSink(path).buffered()
     sink.transferFrom(this)
     sink.flush()
     sink.close()
@@ -29,3 +29,5 @@ internal fun sha256(data: ByteArray): ByteArray {
     sha256.update(data)
     return sha256.digest()
 }
+
+internal expect suspend fun fileSink(path: String): AsyncRawSink
