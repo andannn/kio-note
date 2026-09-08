@@ -43,8 +43,8 @@ class MockRepositoryImpl(private val logger: Logger) : Repository {
     }
 
     override suspend fun getSessionById(sessionId: String): Session? {
-        return null
-//        return Session(1)
+//        return null
+        return Session(1)
     }
 
     override suspend fun createNewNoteForUser(userId: Long): Note {

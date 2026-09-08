@@ -12,7 +12,7 @@ import platform.posix.signal
 const val HOST_IP = "0.0.0.0"
 const val PORT = 8080
 
-fun main() = runPollEventLoop(LinuxUring) {
+fun main() = runPollEventLoop(LinuxUring()) {
     signal(SIGPIPE, SIG_IGN)
 
     val serverSocket = tcpBind(HOST_IP, PORT)
