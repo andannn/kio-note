@@ -39,6 +39,14 @@ enum class BlockType {
     IMAGE,
     ;
 
+    fun isTextBlock(): Boolean {
+        return this == H1 ||
+                this == H2 ||
+                this == H3 ||
+                this == H4 ||
+                this == TEXT
+    }
+
     companion object {
         fun parse(value: String): BlockType? {
             return BlockType.entries.firstOrNull { it.name == value.uppercase() }
@@ -96,6 +104,7 @@ interface Repository {
     suspend fun changeNoteTitleById(id: Long, title: String): Note?
     suspend fun deleteNoteById(id: Long)
     suspend fun addBlockAfter(noteId: Long, blockId: Long?, type: BlockType): NoteBlock?
+    suspend fun changeTextBlockType(noteId: Long, blockId: Long, type: BlockType, textContent: String): NoteBlock?
     suspend fun deleteBlock(noteId: Long, noteBlockId: Long)
     suspend fun saveImageToImageBlock(noteId: Long, noteBlockId: Long, fileSource: AsyncRawSource): NoteBlock.Image?
     suspend fun saveTextToTextBlock(noteId: Long, noteBlockId: Long, content: String): NoteBlock.Text?
@@ -173,6 +182,15 @@ private class RepositoryImpl(
         }
         val block = pgPool.useConnection { it.createBlockAfter(noteId, type, blockId) }
         return block.toNoteBlock()
+    }
+
+    override suspend fun changeTextBlockType(
+        noteId: Long,
+        blockId: Long,
+        type: BlockType,
+        textContent: String
+    ): NoteBlock? {
+        TODO("Not yet implemented")
     }
 
     override suspend fun deleteBlock(noteId: Long, noteBlockId: Long) {

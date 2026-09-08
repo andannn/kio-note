@@ -102,6 +102,65 @@ class MockRepositoryImpl(private val logger: Logger) : Repository {
         return newBlock
     }
 
+    override suspend fun changeTextBlockType(
+        noteId: Long,
+        blockId: Long,
+        type: BlockType,
+        textContent: String
+    ): NoteBlock? {
+        val note = getNoteById(noteId) ?: return null
+
+        val blockIndex = note.blocks.indexOfFirst { it.blockId == blockId }
+        if (blockIndex == -1) return null
+
+        val newBlock = when (type) {
+            BlockType.IMAGE -> {
+                NoteBlock.Image(
+                    blockId = blockId,
+                    url = null,
+                )
+            }
+
+            BlockType.TEXT -> {
+                NoteBlock.Text.Content(
+                    blockId = blockId,
+                    text = textContent,
+                )
+            }
+
+            BlockType.H1 -> {
+                NoteBlock.Text.H1(
+                    blockId = blockId,
+                    text = textContent,
+                )
+            }
+
+            BlockType.H2 -> {
+                NoteBlock.Text.H2(
+                    blockId = blockId,
+                    text = textContent,
+                )
+            }
+
+            BlockType.H3 -> {
+                NoteBlock.Text.H3(
+                    blockId = blockId,
+                    text = textContent,
+                )
+            }
+
+            BlockType.H4 -> {
+                NoteBlock.Text.H4(
+                    blockId = blockId,
+                    text = textContent,
+                )
+            }
+        }
+
+        note.blocks[blockIndex] = newBlock
+        return newBlock
+    }
+
     override suspend fun deleteBlock(noteId: Long, noteBlockId: Long) {
         val note = getNoteById(noteId) ?: return
 

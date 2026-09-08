@@ -42,7 +42,8 @@ fun Route.notesRoute() {
                 delete { call -> call.handleDeleteBlock() }
                 post("text") { call -> call.handleChangeTextBlock() }
                 post("image") { call -> call.handleUploadImageBlock() }
-                post("/after") { call -> call.handleAddBlockAfter() }
+                post("after") { call -> call.handleAddBlockAfter() }
+                post("type") { call -> call.handleChangeTextBlockType() }
             }
         }
     }
@@ -238,5 +239,43 @@ private suspend fun CallContext.handleGetNote() {
 
     respondHtml {
         noteContent(note)
+    }
+}
+
+context(repo: Repository)
+private suspend fun CallContext.handleChangeTextBlockType() {
+    val formParams = receiveFormParameters()
+    val textContent = formParams["text"]
+    val noteId = requestParameters["id"]?.toLongOrNull()
+    val noteBlockId = requestParameters["blockId"]?.toLongOrNull()
+    if (textContent == null || noteId == null || noteBlockId == null) {
+        respond(HttpStatusCode.BadRequest)
+        return
+    }
+    val (blockType, content) = parseBlockTypeAndTextContent(textContent)
+    if (blockType == null || !blockType.isTextBlock()) {
+        respond(HttpStatusCode.BadRequest)
+        return
+    }
+
+
+    val block = repo.changeTextBlockType(noteId, noteBlockId, blockType, content)
+    if (block == null) {
+        respond(HttpStatusCode.NotFound)
+        return
+    }
+
+    respondHtml {
+        noteBlock(noteId, block)
+    }
+}
+
+private fun parseBlockTypeAndTextContent(text: String) : Pair<BlockType?, String> {
+    return when {
+        text.startsWith("####") -> BlockType.H4 to text.removePrefix("####")
+        text.startsWith("###") -> BlockType.H3 to text.removePrefix("###")
+        text.startsWith("##") -> BlockType.H2 to text.removePrefix("##")
+        text.startsWith("#") -> BlockType.H1 to text.removePrefix("#")
+        else -> null to text
     }
 }

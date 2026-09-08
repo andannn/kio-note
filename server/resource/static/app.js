@@ -121,6 +121,13 @@ function handleTextBlockKeyDown(event, input) {
     const noteId = input.dataset.noteId
     const blockId = input.dataset.blockId
 
+    if (event.key === " ") {
+        if (handleMarkdownBlockShortcut(input)) {
+            event.preventDefault()
+            return
+        }
+    }
+
     if (
         event.key === 'Backspace' &&
         input.value === ''
@@ -248,4 +255,30 @@ function focusAutoFocusBlock(root = document) {
 
     element.focus()
     element.removeAttribute('data-autofocus')
+}
+
+function handleMarkdownBlockShortcut(textarea) {
+    let value = textarea.value
+    let markdownMarks = ["####", "###", "##", "#"]
+
+    const mark = markdownMarks.find(it => value.startsWith(it))
+    if (!mark) return false
+
+    const noteId = textarea.dataset.noteId
+    const blockId = textarea.dataset.blockId
+    const containerId = textarea.dataset.blockContainerId
+
+    htmx.ajax(
+        "POST",
+        `/notes/${noteId}/blocks/${blockId}/type`,
+        {
+            target: `#${containerId}`,
+            swap: "outerHTML",
+            values: {
+                text: value,
+            },
+        }
+    )
+
+    return true
 }
