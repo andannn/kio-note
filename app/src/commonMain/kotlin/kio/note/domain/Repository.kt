@@ -21,6 +21,7 @@ import kio.note.database.getUserByUsername
 import kio.note.database.getUserIdBySessionId
 import kio.note.database.updateContentForTextBlock
 import kio.note.database.updateImageBlock
+import kio.note.database.updateTextBlockTypeAndContent
 import kio.note.util.Config
 import kio.note.util.hashPassword
 import kio.note.util.saveFileToPath
@@ -172,15 +173,7 @@ private class RepositoryImpl(
         blockId: Long?,
         type: BlockType
     ): NoteBlock {
-        val type = when (type) {
-            BlockType.TEXT -> NoteBlockEntity.BLOCK_TYPE_TEXT
-            BlockType.IMAGE -> NoteBlockEntity.BLOCK_TYPE_IMAGE
-            BlockType.H1 -> NoteBlockEntity.BLOCK_TYPE_H1
-            BlockType.H2 -> NoteBlockEntity.BLOCK_TYPE_H2
-            BlockType.H3 -> NoteBlockEntity.BLOCK_TYPE_H3
-            BlockType.H4 -> NoteBlockEntity.BLOCK_TYPE_H4
-        }
-        val block = pgPool.useConnection { it.createBlockAfter(noteId, type, blockId) }
+        val block = pgPool.useConnection { it.createBlockAfter(noteId, type.toEntityType(), blockId) }
         return block.toNoteBlock()
     }
 
@@ -190,7 +183,8 @@ private class RepositoryImpl(
         type: BlockType,
         textContent: String
     ): NoteBlock? {
-        TODO("Not yet implemented")
+        val block = pgPool.useConnection { it.updateTextBlockTypeAndContent(blockId, type.toEntityType(), textContent) }
+        return block?.toNoteBlock()
     }
 
     override suspend fun deleteBlock(noteId: Long, noteBlockId: Long) {
@@ -243,4 +237,15 @@ private fun NoteBlockEntity.toNoteBlock(): NoteBlock = when (type) {
     NoteBlockEntity.BLOCK_TYPE_TEXT -> NoteBlock.Text.Content(blockId = id, textContent ?: "")
     NoteBlockEntity.BLOCK_TYPE_IMAGE -> NoteBlock.Image(blockId = id, imageUrl)
     else -> error("not valid block type $type")
+}
+
+private fun BlockType.toEntityType(): String {
+    return when (this) {
+        BlockType.TEXT -> NoteBlockEntity.BLOCK_TYPE_TEXT
+        BlockType.IMAGE -> NoteBlockEntity.BLOCK_TYPE_IMAGE
+        BlockType.H1 -> NoteBlockEntity.BLOCK_TYPE_H1
+        BlockType.H2 -> NoteBlockEntity.BLOCK_TYPE_H2
+        BlockType.H3 -> NoteBlockEntity.BLOCK_TYPE_H3
+        BlockType.H4 -> NoteBlockEntity.BLOCK_TYPE_H4
+    }
 }

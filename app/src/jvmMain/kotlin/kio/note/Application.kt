@@ -11,5 +11,5 @@ fun main(): Unit = runPollEventLoop(Select) {
     val serverSocket = tcpBind(HOST_IP, PORT)
     println("INFO: server (${serverSocket}) is listening to , $HOST_IP, $PORT")
 
-    noteServer(serverSocket)
+    noteApp(serverSocket)
 }

@@ -107,6 +107,15 @@ abstract class DatabaseTest {
         assertEquals(user.id, getUserIdBySessionId("12345"))
     }
 
+    @Test
+    fun changeTextBlockTypeAndContentTest() = withTestPgDatabase {
+        val note = createNoteForUser("new note", 1)
+        val block1 = createBlockAfter(note.id, "text", null)
+        val newBlock = updateTextBlockTypeAndContent(block1.id, "h1", "new c")
+        assertEquals("h1", newBlock!!.type)
+        assertEquals("new c", newBlock.textContent)
+    }
+
     fun withTestPgDatabase(
         block: suspend PgConnection.() -> Unit
     ) =

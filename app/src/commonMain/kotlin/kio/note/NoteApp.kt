@@ -14,10 +14,12 @@ import kio.tls.withServerTls
 import kotlinx.coroutines.withContext
 import kotlin.uuid.Uuid
 
-suspend fun noteServer(serverSocket: ServerSocket) {
+private val DATA_SOURCE = DataSourceType.PRODUCTION
+
+suspend fun noteApp(serverSocket: ServerSocket) {
     val env = loadEnv()
 
-    setupServer(isMock = false, serverSocket, env) { repo ->
+    setupServer(dataSource = DATA_SOURCE, serverSocket, env) { repo ->
         context(repo) {
             inject(
                 CallId { Uuid.random().toString() },
@@ -37,34 +39,52 @@ suspend fun noteServer(serverSocket: ServerSocket) {
     }
 }
 
+private enum class DataSourceType {
+    MOCK,
+    LOCAL_DB,
+    PRODUCTION
+}
+
 private suspend fun setupServer(
-    isMock: Boolean, serverSocket: ServerSocket, env: Env,
+    dataSource: DataSourceType,
+    serverSocket: ServerSocket, env: Env,
     block: suspend Route.(repo: Repository) -> Unit
 ) {
-    if (isMock) {
-        httpServer(
-            serverSocket = serverSocket,
-        ) {
-            val logger = currentLoggingBackend().newLogger("Repository")
-            val repo = MockRepositoryImpl(logger)
-            block(repo)
+    when (dataSource) {
+        DataSourceType.MOCK -> {
+            httpServer(
+                serverSocket = serverSocket,
+            ) {
+                val logger = currentLoggingBackend().newLogger("Repository")
+                val repo = MockRepositoryImpl(logger)
+                block(repo)
+            }
         }
-    } else {
-        val pgPool = createPgPool(env)
 
-        httpServer(
-            serverSocket = serverSocket,
-            connectionWrapper = {
-                withServerTls(
-                    env.tlsCert.pem,
-                    env.tlsKey.pem,
-                    supportAlpnProtocols = listOf("h2", "http/1.1")
-                )
-            },
-        ) {
-            val logger = currentLoggingBackend().newLogger("Repository")
-            val repo = Repository(pgPool, logger)
-            block(repo)
+        DataSourceType.LOCAL_DB -> {
+            httpServer(serverSocket = serverSocket) {
+                val logger = currentLoggingBackend().newLogger("Repository")
+                val repo = Repository(createPgPool(env), logger)
+                block(repo)
+            }
+        }
+
+        DataSourceType.PRODUCTION -> {
+            val pgPool = createPgPool(env)
+            httpServer(
+                serverSocket = serverSocket,
+                connectionWrapper = {
+                    withServerTls(
+                        env.tlsCert.pem,
+                        env.tlsKey.pem,
+                        supportAlpnProtocols = listOf("h2", "http/1.1")
+                    )
+                },
+            ) {
+                val logger = currentLoggingBackend().newLogger("Repository")
+                val repo = Repository(pgPool, logger)
+                block(repo)
+            }
         }
     }
 }

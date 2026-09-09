@@ -279,3 +279,29 @@ suspend fun PgConnection.updateImageBlock(
     }
     return ret.firstOrNull()
 }
+
+suspend fun PgConnection.updateTextBlockTypeAndContent(
+    noteBlockId: Long,
+    noteBlockType: String,
+    textContent: String
+): NoteBlockEntity? {
+    val ret: Flow<NoteBlockEntity> = query("""
+        update note_blocks 
+        set 
+            type = $1,
+            text_content = $2
+        where id = $3
+        returning 
+            id,
+            note_id,
+            type,
+            sort_order,
+            text_content,
+            image_url
+    """.trimIndent()) {
+        param(noteBlockType, PostgresTextSerializer)
+        param(textContent, PostgresTextSerializer)
+        param(noteBlockId, PostgresInt8Serializer)
+    }
+    return ret.firstOrNull()
+}

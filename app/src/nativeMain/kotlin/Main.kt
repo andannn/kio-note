@@ -3,7 +3,7 @@
 import kio.async.io.tcpBind
 import kio.async.poller.uring.LinuxUring
 import kio.async.runPollEventLoop
-import kio.note.noteServer
+import kio.note.noteApp
 import kotlinx.cinterop.ExperimentalForeignApi
 import platform.posix.SIGPIPE
 import platform.posix.SIG_IGN
@@ -18,5 +18,5 @@ fun main() = runPollEventLoop(LinuxUring()) {
     val serverSocket = tcpBind(HOST_IP, PORT)
     println("INFO: server (${serverSocket}) is listening to , $HOST_IP, $PORT")
 
-    noteServer(serverSocket)
+    noteApp(serverSocket)
 }
