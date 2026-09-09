@@ -55,22 +55,19 @@ private suspend fun setupServer(
             httpServer(
                 serverSocket = serverSocket,
             ) {
-                val logger = currentLoggingBackend().newLogger("Repository")
-                val repo = MockRepositoryImpl(logger)
+                val repo = MockRepositoryImpl()
                 block(repo)
             }
         }
 
         DataSourceType.LOCAL_DB -> {
             httpServer(serverSocket = serverSocket) {
-                val logger = currentLoggingBackend().newLogger("Repository")
-                val repo = Repository(createPgPool(env), logger)
+                val repo = Repository(createPgPool(env))
                 block(repo)
             }
         }
 
         DataSourceType.PRODUCTION -> {
-            val pgPool = createPgPool(env)
             httpServer(
                 serverSocket = serverSocket,
                 connectionWrapper = {
@@ -81,8 +78,7 @@ private suspend fun setupServer(
                     )
                 },
             ) {
-                val logger = currentLoggingBackend().newLogger("Repository")
-                val repo = Repository(pgPool, logger)
+                val repo = Repository(createPgPool(env))
                 block(repo)
             }
         }

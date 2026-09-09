@@ -4,8 +4,10 @@ import io.ktor.http.HttpStatusCode
 import kio.async.AsyncRawSource
 import kio.http.CallContext
 import kio.http.Route
+import kio.http.currentLogger
 import kio.http.delete
 import kio.http.get
+import kio.http.info
 import kio.http.patch
 import kio.http.post
 import kio.http.receiveFormParameters
@@ -121,6 +123,7 @@ private suspend fun CallContext.handleAddBlockAfter() {
     val type = requestParameters["type"]
     val noteId = requestParameters["id"]?.toLongOrNull()
     val noteBlockId = requestParameters["blockId"]?.toLongOrNull()
+    currentLogger().info("Trying to add block after noteBlockId=$noteBlockId for note=$noteId.")
     if (type == null || noteId == null || noteBlockId == null) {
         respond(HttpStatusCode.BadRequest)
         return
@@ -248,6 +251,9 @@ private suspend fun CallContext.handleChangeTextBlockType() {
     val textContent = formParams["text"]
     val noteId = requestParameters["id"]?.toLongOrNull()
     val noteBlockId = requestParameters["blockId"]?.toLongOrNull()
+
+    currentLogger().info("trying to change text block type for noteId=$noteId, noteBlock=$noteBlockId")
+
     if (textContent == null || noteId == null || noteBlockId == null) {
         respond(HttpStatusCode.BadRequest)
         return

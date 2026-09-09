@@ -1,7 +1,7 @@
 package kio.note.domain
 
 import kio.async.AsyncRawSource
-import kio.http.Logger
+import kio.http.currentLogger
 import kio.http.trace
 import kio.note.util.Config
 import kio.note.util.saveFileToPath
@@ -9,7 +9,7 @@ import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlin.uuid.Uuid
 
-class MockRepositoryImpl(private val logger: Logger) : Repository {
+class MockRepositoryImpl : Repository {
     private val notes = mutableListOf(
         Note(
             id = 1,
@@ -189,9 +189,9 @@ class MockRepositoryImpl(private val logger: Logger) : Repository {
         val uuid = Uuid.random().toString()
         val filePath = Path(Config.UPLOAD_DIR, uuid).toString()
 
-        logger.trace("Saving image to $filePath")
+        currentLogger().trace("Saving image to $filePath")
         fileSource.saveFileToPath(filePath)
-        logger.trace("Save image finished to $filePath")
+        currentLogger().trace("Save image finished to $filePath")
 
         if (oldBlock.url != null) {
             val oldPath = Path(Config.UPLOAD_DIR, oldBlock.url.substringAfterLast("/"))

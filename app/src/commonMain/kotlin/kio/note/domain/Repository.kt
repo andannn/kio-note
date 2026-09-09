@@ -2,6 +2,7 @@ package kio.note.domain
 
 import kio.async.AsyncRawSource
 import kio.http.Logger
+import kio.http.currentLogger
 import kio.http.info
 import kio.http.trace
 import kio.note.database.NoteBlockEntity
@@ -89,7 +90,7 @@ sealed interface NoteBlock {
     ) : NoteBlock
 }
 
-fun Repository(pgPool: PgConnectionPool, logger: Logger): Repository = RepositoryImpl(pgPool, logger)
+fun Repository(pgPool: PgConnectionPool): Repository = RepositoryImpl(pgPool)
 
 interface Repository {
     // login
@@ -113,7 +114,6 @@ interface Repository {
 
 private class RepositoryImpl(
     private val pgPool: PgConnectionPool,
-    private val logger: Logger
 ) : Repository {
     override suspend fun findUserByUsername(userName: String): User? {
         return pgPool.useConnection { it.getUserByUsername(userName) }?.toUser()
@@ -122,16 +122,11 @@ private class RepositoryImpl(
     override suspend fun verifyPassword(user: User, password: String): Boolean {
         val actualHash = hashPassword(password)
 
-        println("password length=${password.length}")
-        println("password bytes=${password.encodeToByteArray().toList()}")
-        println("actualHash=$actualHash")
-        println("expectedHash=${user.passwordHash}")
-
         return actualHash == user.passwordHash
     }
 
     override suspend fun createSession(userId: Long): String {
-        logger.info("createSession for user $userId")
+        currentLogger().info("createSession for user $userId")
         val session = generateSessionId()
         pgPool.useConnection { it.createSession(userId, session) }
         return session
@@ -202,9 +197,9 @@ private class RepositoryImpl(
         val uuid = Uuid.random().toString()
         val filePath = Path(Config.UPLOAD_DIR, uuid).toString()
 
-        logger.trace("Saving image to $filePath")
+        currentLogger().trace("Saving image to $filePath")
         fileSource.saveFileToPath(filePath)
-        logger.trace("Save image finished to $filePath")
+        currentLogger().trace("Save image finished to $filePath")
 
         if (oldBlock.imageUrl != null) {
             val oldPath = Path(Config.UPLOAD_DIR, oldBlock.imageUrl.substringAfterLast("/"))

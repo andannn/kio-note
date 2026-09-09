@@ -1,11 +1,11 @@
 package kio.note.page
 
 import kio.http.CallContext
+import kio.http.currentLogger
+import kio.http.info
 import kio.http.respondHtml
 import kio.note.components.noteAsideMenu
-import kio.note.components.noteList
 import kio.note.components.noteMainContentEmpty
-import kio.note.domain.Repository
 import kio.note.util.Config
 import kotlinx.html.*
 import kotlinx.html.head
@@ -23,6 +23,7 @@ fun TagConsumer<*>.kNoteHead(title: String) {
 }
 
 suspend fun CallContext.noteMainPage() {
+    currentLogger().info("respond Main Page")
     respondHtml {
         kNoteHead("Knote")
 

@@ -45,9 +45,20 @@ kotlin {
 tasks.register<Sync>("prepareKnoteDist") {
     dependsOn("linkReleaseExecutableLinuxX64")
 
+    val executableDir =
+        layout.buildDirectory.dir("bin/linuxX64/releaseExecutable")
+    val executable = executableDir.map { it.file("app.kexe") }
+
+    doFirst {
+        val file = executable.get().asFile
+        if (!file.isFile) {
+            throw GradleException("no executable：${file.absolutePath}")
+        }
+    }
+
     from(layout.buildDirectory.dir("bin/linuxX64/releaseExecutable")) {
-        include("server.kexe")
-        rename("server.kexe", "knote")
+        include("app.kexe")
+        rename("app.kexe", "knote")
     }
 
     from(layout.projectDirectory.dir("resource")) {
