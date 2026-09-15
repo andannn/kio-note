@@ -62,6 +62,13 @@ var Tag.hxSwap: String
         attributes["hx-swap"] = value
     }
 
+var Tag.hxPushUrl: String
+    get() = attributes["hx-push-url"].orEmpty()
+
+    set(value) {
+        attributes["hx-push-url"] = value
+    }
+
 var Tag.hxOnAfterRequest: String
     get() = attributes["hx-on::after-request"].orEmpty()
     set(value) {

@@ -22,6 +22,7 @@ import kio.note.components.noteList
 import kio.note.components.noteMainContentEmpty
 import kio.note.domain.BlockType
 import kio.note.domain.Repository
+import kio.note.page.noteMainPage
 import kio.note.util.hxSwapOob
 import kotlinx.html.div
 import kotlinx.html.id
@@ -29,23 +30,32 @@ import kotlinx.html.id
 context(_: Repository)
 fun Route.notesRoute() {
     route("/notes") {
-        get { call -> call.handleGetAllNotes() }
         post { call -> call.handleNewNote() }
 
+        route("list") {
+            get { call -> call.handleGetNoteList() }
+        }
+
         route("/{id}") {
-            get { call -> call.handleGetNote() }
+            get { call -> call.noteMainPage(noteId = call.requestParameters["id"]) }
             delete { call -> call.handleDeleteNote() }
+
+            route("editor") {
+                get { call -> call.handleGetNote() }
+            }
 
             route("title") {
                 patch { call -> call.handleChangeTitle() }
             }
 
-            route("blocks/{blockId}") {
-                delete { call -> call.handleDeleteBlock() }
-                post("text") { call -> call.handleChangeTextBlock() }
-                post("image") { call -> call.handleUploadImageBlock() }
-                post("after") { call -> call.handleAddBlockAfter() }
-                post("type") { call -> call.handleChangeTextBlockType() }
+            route("blocks") {
+                route("{blockId}") {
+                    delete { call -> call.handleDeleteBlock() }
+                    post("text") { call -> call.handleChangeTextBlock() }
+                    post("image") { call -> call.handleUploadImageBlock() }
+                    post("after") { call -> call.handleAddBlockAfter() }
+                    post("type") { call -> call.handleChangeTextBlockType() }
+                }
             }
         }
     }
@@ -147,10 +157,11 @@ private suspend fun CallContext.handleAddBlockAfter() {
 }
 
 context(repo: Repository)
-private suspend fun CallContext.handleGetAllNotes() {
+private suspend fun CallContext.handleGetNoteList() {
     val notes = repo.getAllNoteMetaData(requireSession().userId)
+    val selectedNoteId = requestParameters["selectedNoteId"]
     respondHtml {
-        noteList(notes)
+        noteList(notes, selectedNoteId)
     }
 }
 

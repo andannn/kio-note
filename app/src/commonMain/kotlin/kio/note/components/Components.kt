@@ -7,6 +7,7 @@ import kio.note.util.hxGet
 import kio.note.util.hxInclude
 import kio.note.util.hxPatch
 import kio.note.util.hxPost
+import kio.note.util.hxPushUrl
 import kio.note.util.hxSwap
 import kio.note.util.hxTarget
 import kio.note.util.hxTrigger
@@ -16,7 +17,7 @@ fun TagConsumer<*>.noteMainContentEmpty() {
     p { +"Select a note" }
 }
 
-fun TagConsumer<*>.noteAsideMenu() {
+fun TagConsumer<*>.noteAsideMenu(selectedNoteId: String? = null) {
 
     val noteListId = "note-list-items"
 
@@ -43,7 +44,7 @@ fun TagConsumer<*>.noteAsideMenu() {
         }
 
         section(classes = "sidebar-notes") {
-            hxGet = "/notes"
+            hxGet = "/notes/list?selectedNoteId=${selectedNoteId.orEmpty()}"
             hxTrigger = "load"
             hxTarget = "#$noteListId"
             hxSwap = "innerHTML"
@@ -55,9 +56,9 @@ fun TagConsumer<*>.noteAsideMenu() {
     }
 }
 
-fun TagConsumer<*>.noteList(notes: List<Note>) {
+fun TagConsumer<*>.noteList(notes: List<Note>, selectedNoteId: String?) {
     notes.forEach { note ->
-        noteItem(note)
+        noteItem(note, note.id.toString() == selectedNoteId)
     }
 }
 
@@ -69,9 +70,10 @@ fun TagConsumer<*>.noteItem(note: Note, selected: Boolean = false) {
         if (selected) classes += setOf("selected")
 
         button(classes = "note-item-open") {
-            hxGet = "/notes/${note.id}"
+            hxGet = "/notes/${note.id}/editor"
             hxTarget = "#note-content"
             hxSwap = "innerHTML"
+            hxPushUrl = "/notes/${note.id}"
             attributes["hx-on:click"] =
                 """
                 document.querySelectorAll('.note-item.selected')
