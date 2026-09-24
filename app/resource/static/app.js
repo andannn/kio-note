@@ -120,6 +120,8 @@ function deleteBlock(element, noteId, blockId) {
 function handleTextBlockKeyDown(event, input) {
     const noteId = input.dataset.noteId
     const blockId = input.dataset.blockId
+    const currentBlock = getBlockContainer(input)
+    const blocks = currentBlock.parentElement
 
     if (event.key === " ") {
         if (handleMarkdownBlockShortcut(input)) {
@@ -132,8 +134,11 @@ function handleTextBlockKeyDown(event, input) {
         event.key === 'Backspace' &&
         input.value === ''
     ) {
-        event.preventDefault()
+        if (blocks.querySelectorAll('.note-block').length === 1) {
+            return
+        }
 
+        event.preventDefault()
         deleteBlock(
             input,
             noteId,

@@ -49,6 +49,8 @@ fun Route.notesRoute() {
             }
 
             route("blocks") {
+                post { call -> call.handleAddFirstBlock() }
+
                 route("{blockId}") {
                     delete { call -> call.handleDeleteBlock() }
                     post("text") { call -> call.handleChangeTextBlock() }
@@ -294,5 +296,37 @@ private fun parseBlockTypeAndTextContent(text: String) : Pair<BlockType?, String
         text.startsWith("##") -> BlockType.H2 to text.removePrefix("##")
         text.startsWith("#") -> BlockType.H1 to text.removePrefix("#")
         else -> null to text
+    }
+}
+
+context(repo: Repository)
+private suspend fun CallContext.handleAddFirstBlock() {
+    val noteId = requestParameters["id"]?.toLongOrNull()
+    val type = requestParameters["type"]
+
+    if (noteId == null || type == null) {
+        respond(HttpStatusCode.BadRequest)
+        return
+    }
+
+    val blockType = BlockType.parse(type)
+    if (blockType == null) {
+        respond(HttpStatusCode.BadRequest)
+        return
+    }
+
+    val block = repo.addBlockAfter(
+        noteId = noteId,
+        blockId = null,
+        type = blockType,
+    )
+
+    if (block == null) {
+        respond(HttpStatusCode.NotFound)
+        return
+    }
+
+    respondHtml {
+        noteBlock(noteId, block, isNewAdded = true)
     }
 }

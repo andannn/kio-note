@@ -112,8 +112,14 @@ fun TagConsumer<*>.noteContent(note: Note) {
         }
 
         div(classes = "note-blocks") {
-            note.blocks.forEach { block ->
-                noteBlock(note.id, block)
+            id = "note-blocks-${note.id}"
+
+            if (note.blocks.isEmpty()) {
+                emptyNoteBlocks(note.id)
+            } else {
+                note.blocks.forEach { block ->
+                    noteBlock(note.id, block)
+                }
             }
         }
     }
@@ -138,6 +144,15 @@ fun TagConsumer<*>.noteBlock(noteId: Long, block: NoteBlock, isNewAdded: Boolean
     }
 }
 
+private fun TagConsumer<*>.emptyNoteBlocks(noteId: Long) {
+    button(classes = "empty-note-add-block") {
+        hxPost = "/notes/$noteId/blocks?type=text"
+        hxTarget = "#note-blocks-$noteId"
+        hxSwap = "innerHTML"
+
+        +"＋ Add block"
+    }
+}
 
 private fun TagConsumer<*>.imageNoteBlock(
     blockContainerId: String,
