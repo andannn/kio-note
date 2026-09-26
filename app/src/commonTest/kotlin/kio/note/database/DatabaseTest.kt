@@ -13,6 +13,7 @@ import kotlinx.coroutines.withTimeout
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
 
 abstract class DatabaseTest {
@@ -59,7 +60,7 @@ abstract class DatabaseTest {
         assertEquals(0, getNoteBlocksById(note.id).size)
         val block1 = createBlockAfter(note.id, "text", null)
         assertEquals(1, getNoteBlocksById(note.id).size)
-        deleteBlockById(block1.id)
+        deleteBlockById(note.id, block1.id)
         assertEquals(0, getNoteBlocksById(note.id).size)
     }
 
@@ -88,7 +89,7 @@ abstract class DatabaseTest {
     fun updateImageUrlTest() = withTestPgDatabase {
         val note = createNoteForUser("new note", 1)
         val block1 = createBlockAfter(note.id, "text", null)
-        val newBlock = updateImageBlock(block1.id, "new url")
+        val newBlock = updateImageBlock(note.id, block1.id, "new url")
         assertEquals("new url", newBlock?.imageUrl)
     }
 
@@ -111,9 +112,21 @@ abstract class DatabaseTest {
     fun changeTextBlockTypeAndContentTest() = withTestPgDatabase {
         val note = createNoteForUser("new note", 1)
         val block1 = createBlockAfter(note.id, "text", null)
-        val newBlock = updateTextBlockTypeAndContent(block1.id, "h1", "new c")
+        val newBlock = updateTextBlockTypeAndContent(note.id, block1.id, "h1", "new c")
         assertEquals("h1", newBlock!!.type)
         assertEquals("new c", newBlock.textContent)
+    }
+
+    @Test
+    fun updateTimeUpdatedWhenInsertBlock() = withTestPgDatabase {
+        val note = createNoteForUser("new note", 1)
+        val block1 = createBlockAfter(note.id, "text", null)
+        val updateTime1 = getNoteById(note.id)!!.updateAt
+
+        createBlockAfter(note.id, "text", block1.id)
+        val updateTime2 = getNoteById(note.id)!!.updateAt
+
+        assertTrue { updateTime2 > updateTime1 }
     }
 
     fun withTestPgDatabase(

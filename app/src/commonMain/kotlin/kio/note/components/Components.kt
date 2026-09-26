@@ -35,11 +35,7 @@ fun TagConsumer<*>.noteAsideMenu(selectedNoteId: String? = null) {
             """.trimIndent()
 
             span {
-                +"＋"
-            }
-
-            span {
-                +"New note"
+                +"＋New note"
             }
         }
 

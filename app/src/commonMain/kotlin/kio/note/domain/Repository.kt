@@ -1,7 +1,6 @@
 package kio.note.domain
 
 import kio.async.AsyncRawSource
-import kio.http.Logger
 import kio.http.currentLogger
 import kio.http.info
 import kio.http.trace
@@ -178,12 +177,12 @@ private class RepositoryImpl(
         type: BlockType,
         textContent: String
     ): NoteBlock? {
-        val block = pgPool.useConnection { it.updateTextBlockTypeAndContent(blockId, type.toEntityType(), textContent) }
+        val block = pgPool.useConnection { it.updateTextBlockTypeAndContent(noteId, blockId, type.toEntityType(), textContent) }
         return block?.toNoteBlock()
     }
 
     override suspend fun deleteBlock(noteId: Long, noteBlockId: Long) {
-        pgPool.useConnection { it.deleteBlockById(noteBlockId) }
+        pgPool.useConnection { it.deleteBlockById(noteId, noteBlockId) }
     }
 
     override suspend fun saveImageToImageBlock(
@@ -206,7 +205,7 @@ private class RepositoryImpl(
             SystemFileSystem.delete(oldPath)
         }
 
-        return pgPool.useConnection { it.updateImageBlock(noteBlockId, "/attachments/$uuid") }
+        return pgPool.useConnection { it.updateImageBlock(noteId, noteBlockId, "/attachments/$uuid") }
             ?.toNoteBlock() as? NoteBlock.Image
     }
 
