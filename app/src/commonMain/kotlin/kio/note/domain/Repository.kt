@@ -19,6 +19,7 @@ import kio.note.database.getNoteBlocksByNoteBlockId
 import kio.note.database.getNoteById
 import kio.note.database.getUserByUsername
 import kio.note.database.getUserIdBySessionId
+import kio.note.database.saveImageToBlockAndChangeTypeToImage
 import kio.note.database.updateContentForTextBlock
 import kio.note.database.updateImageBlock
 import kio.note.database.updateTextBlockTypeAndContent
@@ -108,6 +109,7 @@ interface Repository {
     suspend fun changeTextBlockType(noteId: Long, blockId: Long, type: BlockType, textContent: String): NoteBlock?
     suspend fun deleteBlock(noteId: Long, noteBlockId: Long)
     suspend fun saveImageToImageBlock(noteId: Long, noteBlockId: Long, fileSource: AsyncRawSource): NoteBlock.Image?
+    suspend fun saveImageAndChangeBlockTypeToImage(noteId: Long, noteBlockId: Long, fileSource: AsyncRawSource): NoteBlock.Image?
     suspend fun saveTextToTextBlock(noteId: Long, noteBlockId: Long, content: String): NoteBlock.Text?
 }
 
@@ -193,19 +195,23 @@ private class RepositoryImpl(
         val oldBlock = pgPool.useConnection { it.getNoteBlocksByNoteBlockId(noteBlockId) }
         if (oldBlock?.type != "image") return null
 
-        val uuid = Uuid.random().toString()
-        val filePath = Path(Config.UPLOAD_DIR, uuid).toString()
+        val newImageUrl = saveImageAndRemoveOldIfNotNull(fileSource, oldBlock.imageUrl)
 
-        currentLogger().trace("Saving image to $filePath")
-        fileSource.saveFileToPath(filePath)
-        currentLogger().trace("Save image finished to $filePath")
+        return pgPool.useConnection { it.updateImageBlock(noteId, noteBlockId, newImageUrl) }
+            ?.toNoteBlock() as? NoteBlock.Image
+    }
 
-        if (oldBlock.imageUrl != null) {
-            val oldPath = Path(Config.UPLOAD_DIR, oldBlock.imageUrl.substringAfterLast("/"))
-            SystemFileSystem.delete(oldPath)
-        }
+    override suspend fun saveImageAndChangeBlockTypeToImage(
+        noteId: Long,
+        noteBlockId: Long,
+        fileSource: AsyncRawSource
+    ): NoteBlock.Image? {
+        val oldBlock = pgPool.useConnection { it.getNoteBlocksByNoteBlockId(noteBlockId) }
+        if (oldBlock == null) return null
 
-        return pgPool.useConnection { it.updateImageBlock(noteId, noteBlockId, "/attachments/$uuid") }
+        val newImageUrl = saveImageAndRemoveOldIfNotNull(fileSource, oldBlock.imageUrl)
+
+        return pgPool.useConnection { it.saveImageToBlockAndChangeTypeToImage(noteId, noteBlockId, newImageUrl) }
             ?.toNoteBlock() as? NoteBlock.Image
     }
 
@@ -242,4 +248,23 @@ private fun BlockType.toEntityType(): String {
         BlockType.H3 -> NoteBlockEntity.BLOCK_TYPE_H3
         BlockType.H4 -> NoteBlockEntity.BLOCK_TYPE_H4
     }
+}
+
+suspend fun saveImageAndRemoveOldIfNotNull(
+    fileSource: AsyncRawSource,
+    oldImageUrl: String?
+): String {
+    val uuid = Uuid.random().toString()
+    val filePath = Path(Config.UPLOAD_DIR, uuid).toString()
+
+    currentLogger().trace("Saving image to $filePath")
+    fileSource.saveFileToPath(filePath)
+    currentLogger().trace("Save image finished to $filePath")
+
+    if (oldImageUrl != null) {
+        val oldPath = Path(Config.UPLOAD_DIR, oldImageUrl.substringAfterLast("/"))
+        SystemFileSystem.delete(oldPath)
+    }
+
+    return "/attachments/$uuid"
 }

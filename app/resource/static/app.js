@@ -13,6 +13,47 @@ document.addEventListener('click', event => {
     })
 })
 
+document.addEventListener('paste', event => {
+    const input = event.target.closest("textarea[data-note-id]");
+    if (!input || input.value.length != 0) return
+
+    const image = Array.from(event.clipboardData?.items ?? [])
+        .find(item =>
+            item.kind === "file" &&
+            item.type.startsWith("image/")
+        )
+        ?.getAsFile();
+
+    if (!image) return;
+
+    event.preventDefault();
+
+    pasteImageToElement(
+        input,
+        input.dataset.noteId,
+        input.dataset.blockId,
+        image
+    );
+})
+
+function pasteImageToElement(element, noteId, blockId, image) {
+    const currentBlock = getBlockContainer(element);
+    if (!currentBlock) return;
+
+    element.setAttribute("hx-encoding", "multipart/form-data");
+
+    return htmx.ajax(
+        "POST",
+        `/notes/${noteId}/blocks/${blockId}/paste-image`,
+        {
+            source: element,
+            values: { image },
+            target: currentBlock,
+            swap: "outerHTML"
+        }
+    );
+}
+
 function getBlockContainer(element) {
     return element.closest('.note-block')
 }

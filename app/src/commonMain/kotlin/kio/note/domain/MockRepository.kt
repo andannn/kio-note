@@ -186,19 +186,27 @@ class MockRepositoryImpl : Repository {
         if (noteBlockIndex == -1) return null
         val oldBlock = note.blocks[noteBlockIndex] as? NoteBlock.Image ?: return null
 
-        val uuid = Uuid.random().toString()
-        val filePath = Path(Config.UPLOAD_DIR, uuid).toString()
+        val newUrl = saveImageAndRemoveOldIfNotNull(fileSource, oldBlock.url)
+        val newBlock = oldBlock.copy(url = newUrl)
 
-        currentLogger().trace("Saving image to $filePath")
-        fileSource.saveFileToPath(filePath)
-        currentLogger().trace("Save image finished to $filePath")
+        note.blocks.removeAt(noteBlockIndex)
+        note.blocks.add(noteBlockIndex, newBlock)
+        return newBlock
+    }
 
-        if (oldBlock.url != null) {
-            val oldPath = Path(Config.UPLOAD_DIR, oldBlock.url.substringAfterLast("/"))
-            SystemFileSystem.delete(oldPath)
-        }
+    override suspend fun saveImageAndChangeBlockTypeToImage(
+        noteId: Long,
+        noteBlockId: Long,
+        fileSource: AsyncRawSource
+    ): NoteBlock.Image? {
+        val note = getNoteById(noteId) ?: return null
+        val noteBlockIndex = note.blocks.indexOfFirst { it.blockId == noteBlockId }
+        if (noteBlockIndex == -1) return null
+        val oldBlock = note.blocks[noteBlockIndex]
 
-        val newBlock = oldBlock.copy(url = "/attachments/$uuid")
+        val newUrl = saveImageAndRemoveOldIfNotNull(fileSource, null)
+        val newBlock = NoteBlock.Image(blockId = oldBlock.blockId, url = newUrl)
+
         note.blocks.removeAt(noteBlockIndex)
         note.blocks.add(noteBlockIndex, newBlock)
         return newBlock
