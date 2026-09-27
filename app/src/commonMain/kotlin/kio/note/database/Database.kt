@@ -225,6 +225,35 @@ suspend fun PgConnection.deleteBlockById(noteId: Long, blockId: Long) = transact
     t.touchNote(noteId = noteId)
 }
 
+suspend fun PgConnection.saveImageToBlockAndChangeTypeToImage(
+    noteId: Long,
+    noteBlockId: Long,
+    imageUrl: String
+): NoteBlockEntity? = transaction { t ->
+    val ret: Flow<NoteBlockEntity> = t.query(
+        """
+        update note_blocks 
+        set image_url = $1,
+            type = 'image',
+            text_content = NULL
+        where id = $2
+        returning 
+            id,
+            note_id,
+            type,
+            sort_order,
+            text_content,
+            image_url
+        """.trimIndent(),
+    ) {
+        param(imageUrl, PostgresTextSerializer)
+        param(noteBlockId, PostgresInt8Serializer)
+    }
+
+    t.touchNote(noteId)
+    ret.firstOrNull()
+}
+
 suspend fun PgConnection.updateImageBlock(
     noteId: Long,
     noteBlockId: Long,

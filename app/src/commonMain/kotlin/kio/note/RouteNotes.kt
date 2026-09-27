@@ -54,7 +54,8 @@ fun Route.notesRoute() {
                 route("{blockId}") {
                     delete { call -> call.handleDeleteBlock() }
                     post("text") { call -> call.handleChangeTextBlock() }
-                    post("image") { call -> call.handleUploadImageBlock() }
+                    post("upload-image") { call -> call.handleUploadImageBlock() }
+                    post("paste-image") { call -> call.handlePasteImageToTextBlock() }
                     post("after") { call -> call.handleAddBlockAfter() }
                     post("type") { call -> call.handleChangeTextBlockType() }
                 }
@@ -74,6 +75,42 @@ private suspend fun CallContext.handleDeleteBlock() {
 
     repo.deleteBlock(noteId, noteBlockId)
     respond(HttpStatusCode.OK)
+}
+
+context(repo: Repository)
+private suspend fun CallContext.handlePasteImageToTextBlock() {
+    val noteId = requestParameters["id"]?.toLongOrNull()
+    val noteBlockId = requestParameters["blockId"]?.toLongOrNull()
+    if (noteId == null || noteBlockId == null) {
+        respond(HttpStatusCode.BadRequest)
+        return
+    }
+
+    val reader = receiveMultipart()
+    var imageFileSource : AsyncRawSource? = null
+    while (true) {
+        val part = reader.nextPart() ?: break
+        if (part.contentDisposition?.name == "image") {
+            imageFileSource = part.body
+            break
+        }
+    }
+
+    if (imageFileSource == null) {
+        respond(HttpStatusCode.BadRequest, "no image file source.")
+        return
+    }
+
+    val image = repo.saveImageAndChangeBlockTypeToImage(noteId, noteBlockId, imageFileSource)
+
+    if (image == null) {
+        respond(HttpStatusCode.BadRequest, "image save failed")
+        return
+    }
+
+    respondHtml {
+        noteBlock(noteId, image, isNewAdded = true)
+    }
 }
 
 context(repo: Repository)

@@ -177,7 +177,7 @@ private fun TagConsumer<*>.imageNoteBlock(
                     name = "image"
                     accept = "image/*"
 
-                    hxPost = "/notes/$noteId/blocks/${block.blockId}/image"
+                    hxPost = "/notes/$noteId/blocks/${block.blockId}/upload-image"
                     hxTrigger = "change"
                     hxTarget = "#$blockContainerId"
                     hxSwap = "outerHTML"

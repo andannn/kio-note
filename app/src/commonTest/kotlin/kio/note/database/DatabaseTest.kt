@@ -94,6 +94,15 @@ abstract class DatabaseTest {
     }
 
     @Test
+    fun updateImageUrlAndChangeImageTypeTest() = withTestPgDatabase {
+        val note = createNoteForUser("new note", 1)
+        val block1 = createBlockAfter(note.id, "text", null)
+        val newBlock = saveImageToBlockAndChangeTypeToImage(note.id, block1.id, "new url")
+        assertEquals("new url", newBlock?.imageUrl)
+        assertEquals("image", newBlock?.type)
+    }
+
+    @Test
     fun getUserByUsernameTest() = withTestPgDatabase {
         val user = createUser("userA", "pass")
         assertEquals("userA", user.username)
