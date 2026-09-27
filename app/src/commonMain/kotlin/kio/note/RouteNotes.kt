@@ -172,7 +172,11 @@ private suspend fun CallContext.handleNewNote() {
     val note = repo.createNewNoteForUser(requireSession().userId)
     val noteBlock = repo.addBlockAfter(noteId = note.id, blockId = null, type = BlockType.TEXT)!!
     val newNote = note.copy(blocks = mutableListOf(noteBlock))
-    respondHtml {
+    respondHtml(
+        configHeaders = {
+            append("HX-Push-Url", "/notes/${newNote.id}")
+        }
+    ) {
         noteItem(newNote, true)
 
         div {
