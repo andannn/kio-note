@@ -145,7 +145,13 @@ private suspend fun CallContext.handleChangeTitle() {
 context(repo: Repository)
 private suspend fun CallContext.handleDeleteNote() {
     val idToDelete = requireNoteId()
+    val currentNoteId = requestParameters["currentNoteId"]?.toLongOrNull()
+
     repo.deleteNoteById(idToDelete)
+    if (currentNoteId != idToDelete) {
+        respond(HttpStatusCode.OK)
+        return
+    }
     respondHtml {
         div {
             id = "note-content"

@@ -83,6 +83,7 @@ fun TagConsumer<*>.noteItem(note: Note, selected: Boolean = false) {
             hxDelete = "/notes/${note.id}"
             hxSwap = "delete"
             hxTarget = "#$noteId"
+            hxInclude = "#current-note-id"
 
             +"×"
         }
