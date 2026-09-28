@@ -1,17 +1,14 @@
 package kio.note
 
 import io.ktor.http.HttpStatusCode
-import kio.async.AsyncRawSource
 import kio.http.CallContext
+import kio.http.CallInterceptor
 import kio.http.Route
-import kio.http.currentLogger
 import kio.http.delete
 import kio.http.get
-import kio.http.info
 import kio.http.patch
 import kio.http.post
 import kio.http.receiveFormParameters
-import kio.http.receiveMultipart
 import kio.http.respond
 import kio.http.respondHtml
 import kio.http.route
@@ -24,8 +21,12 @@ import kio.note.domain.BlockType
 import kio.note.domain.Repository
 import kio.note.page.noteMainPage
 import kio.note.util.hxSwapOob
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.withContext
 import kotlinx.html.div
 import kotlinx.html.id
+import kotlin.coroutines.AbstractCoroutineContextElement
+import kotlin.coroutines.CoroutineContext
 
 context(_: Repository)
 fun Route.notesRoute() {
@@ -37,162 +38,52 @@ fun Route.notesRoute() {
         }
 
         route("/{id}") {
-            get { call -> call.noteMainPage(noteId = call.requestParameters["id"]) }
-            delete { call -> call.handleDeleteNote() }
+            inject(NoteId()) {
+                get { call -> call.noteMainPage(noteId = requireNoteId()) }
+                delete { call -> call.handleDeleteNote() }
 
-            route("editor") {
-                get { call -> call.handleGetNote() }
-            }
+                route("editor") {
+                    get { call -> call.handleGetNote() }
+                }
 
-            route("title") {
-                patch { call -> call.handleChangeTitle() }
-            }
+                route("title") {
+                    patch { call -> call.handleChangeTitle() }
+                }
 
-            route("blocks") {
-                post { call -> call.handleAddFirstBlock() }
+                route("blocks") {
+                    post { call -> call.handleAddFirstBlock() }
 
-                route("{blockId}") {
-                    delete { call -> call.handleDeleteBlock() }
-                    post("text") { call -> call.handleChangeTextBlock() }
-                    post("upload-image") { call -> call.handleUploadImageBlock() }
-                    post("paste-image") { call -> call.handlePasteImageToTextBlock() }
-                    post("after") { call -> call.handleAddBlockAfter() }
-                    post("type") { call -> call.handleChangeTextBlockType() }
+                    noteBlockOperations()
                 }
             }
         }
     }
 }
 
-context(repo: Repository)
-private suspend fun CallContext.handleDeleteBlock() {
-    val noteId = requestParameters["id"]?.toLongOrNull()
-    val noteBlockId = requestParameters["blockId"]?.toLongOrNull()
-    if (noteId == null || noteBlockId == null) {
-        respond(HttpStatusCode.BadRequest)
-        return
-    }
-
-    repo.deleteBlock(noteId, noteBlockId)
-    respond(HttpStatusCode.OK)
+suspend fun requireNoteId(): Long {
+    return currentCoroutineContext()[CoroutineNoteId]?.noteId ?: error("no noteId")
 }
 
-context(repo: Repository)
-private suspend fun CallContext.handlePasteImageToTextBlock() {
-    val noteId = requestParameters["id"]?.toLongOrNull()
-    val noteBlockId = requestParameters["blockId"]?.toLongOrNull()
-    if (noteId == null || noteBlockId == null) {
-        respond(HttpStatusCode.BadRequest)
-        return
-    }
-
-    val reader = receiveMultipart()
-    var imageFileSource : AsyncRawSource? = null
-    while (true) {
-        val part = reader.nextPart() ?: break
-        if (part.contentDisposition?.name == "image") {
-            imageFileSource = part.body
-            break
+private fun NoteId() = CallInterceptor { call, proceed ->
+    val noteId = call.requestParameters["id"]?.toLongOrNull()
+    if (noteId == null) {
+        call.respond(
+            HttpStatusCode.BadRequest,
+            message = "request note id parameter but get ${call.requestParameters["id"]}"
+        )
+    } else {
+        withContext(CoroutineNoteId(noteId)) {
+            proceed(call)
         }
     }
-
-    if (imageFileSource == null) {
-        respond(HttpStatusCode.BadRequest, "no image file source.")
-        return
-    }
-
-    val image = repo.saveImageAndChangeBlockTypeToImage(noteId, noteBlockId, imageFileSource)
-
-    if (image == null) {
-        respond(HttpStatusCode.BadRequest, "image save failed")
-        return
-    }
-
-    respondHtml {
-        noteBlock(noteId, image, isNewAdded = true)
-    }
 }
 
-context(repo: Repository)
-private suspend fun CallContext.handleUploadImageBlock() {
-    val noteId = requestParameters["id"]?.toLongOrNull()
-    val noteBlockId = requestParameters["blockId"]?.toLongOrNull()
-    if (noteId == null || noteBlockId == null) {
-        respond(HttpStatusCode.BadRequest)
-        return
-    }
+private data class CoroutineNoteId(
+    val noteId: Long
+) : AbstractCoroutineContextElement(CoroutineNoteId) {
+    companion object Key : CoroutineContext.Key<CoroutineNoteId>
 
-    val reader = receiveMultipart()
-    var imageFileSource : AsyncRawSource? = null
-    while (true) {
-        val part = reader.nextPart() ?: break
-        if (part.contentDisposition?.name == "image") {
-            imageFileSource = part.body
-            break
-        }
-    }
-
-    if (imageFileSource == null) {
-        respond(HttpStatusCode.BadRequest)
-        return
-    }
-    val image = repo.saveImageToImageBlock(noteId, noteBlockId, imageFileSource)
-
-    if (image == null) {
-        respond(HttpStatusCode.BadRequest)
-        return
-    }
-
-    respondHtml {
-        noteBlock(noteId, image, isNewAdded = true)
-    }
-}
-
-context(repo: Repository)
-private suspend fun CallContext.handleChangeTextBlock() {
-    val noteId = requestParameters["id"]?.toLongOrNull()
-    val noteBlockId = requestParameters["blockId"]?.toLongOrNull()
-    if (noteId == null || noteBlockId == null) {
-        respond(HttpStatusCode.BadRequest)
-        return
-    }
-
-    val content = receiveFormParameters()["text"]
-    if (content == null) {
-        respond(HttpStatusCode.BadRequest)
-        return
-    }
-
-    repo.saveTextToTextBlock(noteId, noteBlockId, content)
-    respond(HttpStatusCode.OK)
-}
-
-context(repo: Repository)
-private suspend fun CallContext.handleAddBlockAfter() {
-    val type = requestParameters["type"]
-    val noteId = requestParameters["id"]?.toLongOrNull()
-    val noteBlockId = requestParameters["blockId"]?.toLongOrNull()
-    currentLogger().info("Trying to add block after noteBlockId=$noteBlockId for note=$noteId.")
-    if (type == null || noteId == null || noteBlockId == null) {
-        respond(HttpStatusCode.BadRequest)
-        return
-    }
-
-    val blockType = BlockType.parse(type)
-    if (blockType == null) {
-        respond(HttpStatusCode.BadRequest)
-        return
-    }
-
-    val newBlock = repo.addBlockAfter(noteId, noteBlockId, blockType)
-    if (newBlock == null) {
-        respond(HttpStatusCode.NotFound)
-        return
-    }
-
-    respondHtml {
-        noteBlock(noteId, newBlock, isNewAdded = true)
-    }
+    override fun toString(): String = "CoroutineNoteId(${noteId})"
 }
 
 context(repo: Repository)
@@ -227,11 +118,7 @@ private suspend fun CallContext.handleNewNote() {
 
 context(repo: Repository)
 private suspend fun CallContext.handleChangeTitle() {
-    val id = requestParameters["id"]?.toLongOrNull()
-    if (id == null) {
-        respond(HttpStatusCode.BadRequest)
-        return
-    }
+    val id = requireNoteId()
 
     val newTitle = receiveFormParameters()["title"]
     if (newTitle == null) {
@@ -257,19 +144,14 @@ private suspend fun CallContext.handleChangeTitle() {
 
 context(repo: Repository)
 private suspend fun CallContext.handleDeleteNote() {
-    val idToDelete = requestParameters["id"]?.toLongOrNull()
+    val idToDelete = requireNoteId()
     val currentNoteId = requestParameters["currentNoteId"]?.toLongOrNull()
-    if (idToDelete == null) {
-        respond(HttpStatusCode.BadRequest)
-        return
-    }
 
     repo.deleteNoteById(idToDelete)
     if (currentNoteId != idToDelete) {
         respond(HttpStatusCode.OK)
         return
     }
-
     respondHtml {
         div {
             id = "note-content"
@@ -282,11 +164,7 @@ private suspend fun CallContext.handleDeleteNote() {
 
 context(repo: Repository)
 private suspend fun CallContext.handleGetNote() {
-    val id = requestParameters["id"]?.toLongOrNull()
-    if (id == null) {
-        respond(HttpStatusCode.BadRequest)
-        return
-    }
+    val id = requireNoteId()
 
     val note = repo.getNoteById(id)
     if (note == null) {
@@ -300,52 +178,11 @@ private suspend fun CallContext.handleGetNote() {
 }
 
 context(repo: Repository)
-private suspend fun CallContext.handleChangeTextBlockType() {
-    val formParams = receiveFormParameters()
-    val textContent = formParams["text"]
-    val noteId = requestParameters["id"]?.toLongOrNull()
-    val noteBlockId = requestParameters["blockId"]?.toLongOrNull()
-
-    currentLogger().info("trying to change text block type for noteId=$noteId, noteBlock=$noteBlockId")
-
-    if (textContent == null || noteId == null || noteBlockId == null) {
-        respond(HttpStatusCode.BadRequest)
-        return
-    }
-    val (blockType, content) = parseBlockTypeAndTextContent(textContent)
-    if (blockType == null || !blockType.isTextBlock()) {
-        respond(HttpStatusCode.BadRequest)
-        return
-    }
-
-
-    val block = repo.changeTextBlockType(noteId, noteBlockId, blockType, content)
-    if (block == null) {
-        respond(HttpStatusCode.NotFound)
-        return
-    }
-
-    respondHtml {
-        noteBlock(noteId, block)
-    }
-}
-
-private fun parseBlockTypeAndTextContent(text: String) : Pair<BlockType?, String> {
-    return when {
-        text.startsWith("####") -> BlockType.H4 to text.removePrefix("####")
-        text.startsWith("###") -> BlockType.H3 to text.removePrefix("###")
-        text.startsWith("##") -> BlockType.H2 to text.removePrefix("##")
-        text.startsWith("#") -> BlockType.H1 to text.removePrefix("#")
-        else -> null to text
-    }
-}
-
-context(repo: Repository)
 private suspend fun CallContext.handleAddFirstBlock() {
-    val noteId = requestParameters["id"]?.toLongOrNull()
+    val noteId = requireNoteId()
     val type = requestParameters["type"]
 
-    if (noteId == null || type == null) {
+    if (type == null) {
         respond(HttpStatusCode.BadRequest)
         return
     }

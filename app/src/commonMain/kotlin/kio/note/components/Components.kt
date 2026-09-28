@@ -17,7 +17,7 @@ fun TagConsumer<*>.noteMainContentEmpty() {
     p { +"Select a note" }
 }
 
-fun TagConsumer<*>.noteAsideMenu(selectedNoteId: String? = null) {
+fun TagConsumer<*>.noteAsideMenu(selectedNoteId: Long? = null) {
 
     val noteListId = "note-list-items"
 
@@ -40,7 +40,7 @@ fun TagConsumer<*>.noteAsideMenu(selectedNoteId: String? = null) {
         }
 
         section(classes = "sidebar-notes") {
-            hxGet = "/notes/list?selectedNoteId=${selectedNoteId.orEmpty()}"
+            hxGet = "/notes/list?selectedNoteId=${selectedNoteId?.toString().orEmpty()}"
             hxTrigger = "load"
             hxTarget = "#$noteListId"
             hxSwap = "innerHTML"
