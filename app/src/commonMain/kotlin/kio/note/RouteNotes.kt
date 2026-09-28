@@ -2,6 +2,7 @@ package kio.note
 
 import io.ktor.http.HttpStatusCode
 import kio.http.CallContext
+import kio.http.CallInterceptor
 import kio.http.Route
 import kio.http.delete
 import kio.http.get
@@ -20,8 +21,12 @@ import kio.note.domain.BlockType
 import kio.note.domain.Repository
 import kio.note.page.noteMainPage
 import kio.note.util.hxSwapOob
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.withContext
 import kotlinx.html.div
 import kotlinx.html.id
+import kotlin.coroutines.AbstractCoroutineContextElement
+import kotlin.coroutines.CoroutineContext
 
 context(_: Repository)
 fun Route.notesRoute() {
@@ -33,24 +38,52 @@ fun Route.notesRoute() {
         }
 
         route("/{id}") {
-            get { call -> call.noteMainPage(noteId = call.requestParameters["id"]) }
-            delete { call -> call.handleDeleteNote() }
+            inject(NoteId()) {
+                get { call -> call.noteMainPage(noteId = requireNoteId()) }
+                delete { call -> call.handleDeleteNote() }
 
-            route("editor") {
-                get { call -> call.handleGetNote() }
-            }
+                route("editor") {
+                    get { call -> call.handleGetNote() }
+                }
 
-            route("title") {
-                patch { call -> call.handleChangeTitle() }
-            }
+                route("title") {
+                    patch { call -> call.handleChangeTitle() }
+                }
 
-            route("blocks") {
-                post { call -> call.handleAddFirstBlock() }
+                route("blocks") {
+                    post { call -> call.handleAddFirstBlock() }
 
-                noteBlockOperations()
+                    noteBlockOperations()
+                }
             }
         }
     }
+}
+
+suspend fun requireNoteId(): Long {
+    return currentCoroutineContext()[CoroutineNoteId]?.noteId ?: error("no noteId")
+}
+
+private fun NoteId() = CallInterceptor { call, proceed ->
+    val noteId = call.requestParameters["id"]?.toLongOrNull()
+    if (noteId == null) {
+        call.respond(
+            HttpStatusCode.BadRequest,
+            message = "request note id parameter but get ${call.requestParameters["id"]}"
+        )
+    } else {
+        withContext(CoroutineNoteId(noteId)) {
+            proceed(call)
+        }
+    }
+}
+
+private data class CoroutineNoteId(
+    val noteId: Long
+) : AbstractCoroutineContextElement(CoroutineNoteId) {
+    companion object Key : CoroutineContext.Key<CoroutineNoteId>
+
+    override fun toString(): String = "CoroutineNoteId(${noteId})"
 }
 
 context(repo: Repository)
@@ -85,11 +118,7 @@ private suspend fun CallContext.handleNewNote() {
 
 context(repo: Repository)
 private suspend fun CallContext.handleChangeTitle() {
-    val id = requestParameters["id"]?.toLongOrNull()
-    if (id == null) {
-        respond(HttpStatusCode.BadRequest)
-        return
-    }
+    val id = requireNoteId()
 
     val newTitle = receiveFormParameters()["title"]
     if (newTitle == null) {
@@ -115,19 +144,8 @@ private suspend fun CallContext.handleChangeTitle() {
 
 context(repo: Repository)
 private suspend fun CallContext.handleDeleteNote() {
-    val idToDelete = requestParameters["id"]?.toLongOrNull()
-    val currentNoteId = requestParameters["currentNoteId"]?.toLongOrNull()
-    if (idToDelete == null) {
-        respond(HttpStatusCode.BadRequest)
-        return
-    }
-
+    val idToDelete = requireNoteId()
     repo.deleteNoteById(idToDelete)
-    if (currentNoteId != idToDelete) {
-        respond(HttpStatusCode.OK)
-        return
-    }
-
     respondHtml {
         div {
             id = "note-content"
@@ -140,11 +158,7 @@ private suspend fun CallContext.handleDeleteNote() {
 
 context(repo: Repository)
 private suspend fun CallContext.handleGetNote() {
-    val id = requestParameters["id"]?.toLongOrNull()
-    if (id == null) {
-        respond(HttpStatusCode.BadRequest)
-        return
-    }
+    val id = requireNoteId()
 
     val note = repo.getNoteById(id)
     if (note == null) {
@@ -159,10 +173,10 @@ private suspend fun CallContext.handleGetNote() {
 
 context(repo: Repository)
 private suspend fun CallContext.handleAddFirstBlock() {
-    val noteId = requestParameters["id"]?.toLongOrNull()
+    val noteId = requireNoteId()
     val type = requestParameters["type"]
 
-    if (noteId == null || type == null) {
+    if (type == null) {
         respond(HttpStatusCode.BadRequest)
         return
     }

@@ -22,11 +22,10 @@ import kotlinx.coroutines.withContext
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
 
-
 context(_: Repository)
 fun Route.noteBlockOperations() {
-    inject(BlockId()) {
-        route("{blockId}") {
+    route("{blockId}") {
+        inject(BlockId()) {
             delete { call -> call.handleDeleteBlock() }
             post("text") { call -> call.handleChangeTextBlock() }
             post("upload-image") { call -> call.handleUploadImageBlock() }
@@ -65,12 +64,8 @@ private data class CoroutineBlockId(
 
 context(repo: Repository)
 private suspend fun CallContext.handleDeleteBlock() {
-    val noteId = requestParameters["id"]?.toLongOrNull()
+    val noteId = requireNoteId()
     val noteBlockId = requireBlockId()
-    if (noteId == null || noteBlockId == null) {
-        respond(HttpStatusCode.BadRequest)
-        return
-    }
 
     repo.deleteBlock(noteId, noteBlockId)
     respond(HttpStatusCode.OK)
@@ -78,12 +73,8 @@ private suspend fun CallContext.handleDeleteBlock() {
 
 context(repo: Repository)
 private suspend fun CallContext.handleChangeTextBlock() {
-    val noteId = requestParameters["id"]?.toLongOrNull()
-    val noteBlockId = requestParameters["blockId"]?.toLongOrNull()
-    if (noteId == null || noteBlockId == null) {
-        respond(HttpStatusCode.BadRequest)
-        return
-    }
+    val noteId = requireNoteId()
+    val noteBlockId = requireBlockId()
 
     val content = receiveFormParameters()["text"]
     if (content == null) {
@@ -97,15 +88,11 @@ private suspend fun CallContext.handleChangeTextBlock() {
 
 context(repo: Repository)
 private suspend fun CallContext.handleUploadImageBlock() {
-    val noteId = requestParameters["id"]?.toLongOrNull()
-    val noteBlockId = requestParameters["blockId"]?.toLongOrNull()
-    if (noteId == null || noteBlockId == null) {
-        respond(HttpStatusCode.BadRequest)
-        return
-    }
+    val noteId = requireNoteId()
+    val noteBlockId = requireBlockId()
 
     val reader = receiveMultipart()
-    var imageFileSource : AsyncRawSource? = null
+    var imageFileSource: AsyncRawSource? = null
     while (true) {
         val part = reader.nextPart() ?: break
         if (part.contentDisposition?.name == "image") {
@@ -132,15 +119,11 @@ private suspend fun CallContext.handleUploadImageBlock() {
 
 context(repo: Repository)
 private suspend fun CallContext.handlePasteImageToTextBlock() {
-    val noteId = requestParameters["id"]?.toLongOrNull()
-    val noteBlockId = requestParameters["blockId"]?.toLongOrNull()
-    if (noteId == null || noteBlockId == null) {
-        respond(HttpStatusCode.BadRequest)
-        return
-    }
+    val noteId = requireNoteId()
+    val noteBlockId = requireBlockId()
 
     val reader = receiveMultipart()
-    var imageFileSource : AsyncRawSource? = null
+    var imageFileSource: AsyncRawSource? = null
     while (true) {
         val part = reader.nextPart() ?: break
         if (part.contentDisposition?.name == "image") {
@@ -170,10 +153,10 @@ private suspend fun CallContext.handlePasteImageToTextBlock() {
 context(repo: Repository)
 private suspend fun CallContext.handleAddBlockAfter() {
     val type = requestParameters["type"]
-    val noteId = requestParameters["id"]?.toLongOrNull()
-    val noteBlockId = requestParameters["blockId"]?.toLongOrNull()
+    val noteId = requireNoteId()
+    val noteBlockId = requireBlockId()
     currentLogger().info("Trying to add block after noteBlockId=$noteBlockId for note=$noteId.")
-    if (type == null || noteId == null || noteBlockId == null) {
+    if (type == null) {
         respond(HttpStatusCode.BadRequest)
         return
     }
@@ -200,12 +183,12 @@ context(repo: Repository)
 private suspend fun CallContext.handleChangeTextBlockType() {
     val formParams = receiveFormParameters()
     val textContent = formParams["text"]
-    val noteId = requestParameters["id"]?.toLongOrNull()
-    val noteBlockId = requestParameters["blockId"]?.toLongOrNull()
+    val noteId = requireNoteId()
+    val noteBlockId = requireBlockId()
 
     currentLogger().info("trying to change text block type for noteId=$noteId, noteBlock=$noteBlockId")
 
-    if (textContent == null || noteId == null || noteBlockId == null) {
+    if (textContent == null) {
         respond(HttpStatusCode.BadRequest)
         return
     }
@@ -227,7 +210,7 @@ private suspend fun CallContext.handleChangeTextBlockType() {
     }
 }
 
-private fun parseBlockTypeAndTextContent(text: String) : Pair<BlockType?, String> {
+private fun parseBlockTypeAndTextContent(text: String): Pair<BlockType?, String> {
     return when {
         text.startsWith("####") -> BlockType.H4 to text.removePrefix("####")
         text.startsWith("###") -> BlockType.H3 to text.removePrefix("###")

@@ -31,7 +31,7 @@ fun TagConsumer<*>.kNoteHead(title: String) {
     }
 }
 
-suspend fun CallContext.noteMainPage(noteId: String? = null) {
+suspend fun CallContext.noteMainPage(noteId: Long? = null) {
     currentLogger().info("respond Main Page: noteId=$noteId")
     respondHtml {
         kNoteHead("Knote")
