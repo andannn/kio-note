@@ -7,6 +7,7 @@ import kio.postgres.conn.TransactionScope
 import kio.postgres.conn.param
 import kio.postgres.conn.query
 import kio.postgres.conn.transaction
+import kio.postgres.types.PostgresBoolSerializer
 import kio.postgres.types.PostgresInt8Serializer
 import kio.postgres.types.PostgresTextSerializer
 import kotlinx.coroutines.flow.Flow
@@ -124,13 +125,7 @@ suspend fun PgConnection.createBlockAfter(
                 sort_order
             )
             values ($1, $2, $3)
-            returning
-                id,
-                note_id,
-                type,
-                sort_order,
-                text_content,
-                image_url
+            returning id, note_id, type, sort_order, text_content, image_url, checked
         """.trimIndent(),
     ) {
         param(noteId, PostgresInt8Serializer)
@@ -160,13 +155,7 @@ suspend fun PgConnection.updateContentForTextBlock(
         update note_blocks
         set text_content = $1
         where id = $2 and note_id = $3
-        returning
-           id,
-           note_id,
-           type,
-           sort_order,
-           text_content,
-           image_url
+        returning id, note_id, type, sort_order, text_content, image_url, checked
         """.trimIndent()
     ) {
         param(content, PostgresTextSerializer)
@@ -237,16 +226,32 @@ suspend fun PgConnection.saveImageToBlockAndChangeTypeToImage(
             type = 'image',
             text_content = NULL
         where id = $2
-        returning 
-            id,
-            note_id,
-            type,
-            sort_order,
-            text_content,
-            image_url
+        returning id, note_id, type, sort_order, text_content, image_url, checked
         """.trimIndent(),
     ) {
         param(imageUrl, PostgresTextSerializer)
+        param(noteBlockId, PostgresInt8Serializer)
+    }
+
+    t.touchNote(noteId)
+    ret.firstOrNull()
+}
+
+suspend fun PgConnection.saveCheckedToBlock(
+    noteId: Long,
+    noteBlockId: Long,
+    checked: Boolean
+): NoteBlockEntity? = transaction { t ->
+    val ret: Flow<NoteBlockEntity> = t.query(
+        """
+        update note_blocks
+        set checked = $1,
+            type = 'task-list-item'
+        where id = $2
+        returning id, note_id, type, sort_order, text_content, image_url, checked
+        """.trimIndent(),
+    ) {
+        param(checked, PostgresBoolSerializer)
         param(noteBlockId, PostgresInt8Serializer)
     }
 
@@ -262,13 +267,7 @@ suspend fun PgConnection.updateImageBlock(
     val ret: Flow<NoteBlockEntity> = t.query(
         """
         update note_blocks set image_url = $1 where id = $2
-        returning 
-            id,
-            note_id,
-            type,
-            sort_order,
-            text_content,
-            image_url
+        returning id, note_id, type, sort_order, text_content, image_url, checked
         """.trimIndent(),
     ) {
         param(imageUrl, PostgresTextSerializer)
@@ -278,28 +277,25 @@ suspend fun PgConnection.updateImageBlock(
     ret.firstOrNull()
 }
 
-suspend fun PgConnection.updateTextBlockTypeAndContent(
+suspend fun PgConnection.updateNoteBlock(
     noteId: Long,
     noteBlockId: Long,
     noteBlockType: String,
-    textContent: String
+    textContent: String,
+    checked: Boolean = false
 ): NoteBlockEntity? = transaction { t ->
     val ret: Flow<NoteBlockEntity> = t.query("""
         update note_blocks 
         set 
             type = $1,
-            text_content = $2
-        where id = $3
-        returning 
-            id,
-            note_id,
-            type,
-            sort_order,
-            text_content,
-            image_url
+            text_content = $2,
+            checked = $3
+        where id = $4
+        returning id, note_id, type, sort_order, text_content, image_url, checked
     """.trimIndent()) {
         param(noteBlockType, PostgresTextSerializer)
         param(textContent, PostgresTextSerializer)
+        param(checked, PostgresBoolSerializer)
         param(noteBlockId, PostgresInt8Serializer)
     }
     t.touchNote(noteId)

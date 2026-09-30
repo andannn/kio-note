@@ -32,6 +32,7 @@ fun Route.noteBlockOperations() {
             post("paste-image") { call -> call.handlePasteImageToTextBlock() }
             post("after") { call -> call.handleAddBlockAfter() }
             post("type") { call -> call.handleChangeTextBlockType() }
+            post("checkbox") { call -> call.handleChangeCheckBox() }
         }
     }
 }
@@ -180,6 +181,21 @@ private suspend fun CallContext.handleAddBlockAfter() {
 
 
 context(repo: Repository)
+private suspend fun CallContext.handleChangeCheckBox() {
+    val noteId = requireNoteId()
+    val noteBlockId = requireBlockId()
+    val checked = receiveFormParameters()["check"].toBoolean()
+    val block = repo.saveCheckedToTaskListItemBlock(noteId, noteBlockId, checked)
+    if (block == null) {
+        respond(HttpStatusCode.NotFound)
+        return
+    }
+    respondHtml {
+        noteBlock(noteId, block)
+    }
+}
+
+context(repo: Repository)
 private suspend fun CallContext.handleChangeTextBlockType() {
     val formParams = receiveFormParameters()
     val textContent = formParams["text"]
@@ -192,14 +208,14 @@ private suspend fun CallContext.handleChangeTextBlockType() {
         respond(HttpStatusCode.BadRequest)
         return
     }
-    val (blockType, content) = parseBlockTypeAndTextContent(textContent)
+    val (blockType, content, extra) = parseBlockTypeAndTextContent(textContent)
     if (blockType == null || !blockType.isTextBlock()) {
         respond(HttpStatusCode.BadRequest)
         return
     }
 
 
-    val block = repo.changeTextBlockType(noteId, noteBlockId, blockType, content)
+    val block = repo.updateNoteBlock(noteId, noteBlockId, blockType, content, extra)
     if (block == null) {
         respond(HttpStatusCode.NotFound)
         return
@@ -210,12 +226,14 @@ private suspend fun CallContext.handleChangeTextBlockType() {
     }
 }
 
-private fun parseBlockTypeAndTextContent(text: String): Pair<BlockType?, String> {
+private fun parseBlockTypeAndTextContent(text: String): Triple<BlockType?, String, Any?> {
     return when {
-        text.startsWith("####") -> BlockType.H4 to text.removePrefix("####")
-        text.startsWith("###") -> BlockType.H3 to text.removePrefix("###")
-        text.startsWith("##") -> BlockType.H2 to text.removePrefix("##")
-        text.startsWith("#") -> BlockType.H1 to text.removePrefix("#")
-        else -> null to text
+        text.startsWith("####") -> Triple(BlockType.H4, text.removePrefix("####"), null)
+        text.startsWith("###") -> Triple(BlockType.H3, text.removePrefix("###"), null)
+        text.startsWith("##") -> Triple(BlockType.H2, text.removePrefix("##"), null)
+        text.startsWith("#") -> Triple(BlockType.H1, text.removePrefix("#"), null)
+        text.startsWith("[x]") -> Triple(BlockType.TASK_LIST_ITEM, text.removePrefix("[x]"), true)
+        text.startsWith("[ ]") -> Triple(BlockType.TASK_LIST_ITEM, text.removePrefix("[ ]"), false)
+        else -> Triple(null, text, null)
     }
 }

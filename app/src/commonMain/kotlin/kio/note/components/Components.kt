@@ -11,6 +11,7 @@ import kio.note.util.hxPushUrl
 import kio.note.util.hxSwap
 import kio.note.util.hxTarget
 import kio.note.util.hxTrigger
+import kio.note.util.hxVals
 import kotlinx.html.*
 
 fun TagConsumer<*>.noteMainContentEmpty() {
@@ -134,6 +135,10 @@ fun TagConsumer<*>.noteBlock(noteId: Long, block: NoteBlock, isNewAdded: Boolean
             is NoteBlock.Image -> {
                 imageNoteBlock(blockContainerId, noteId, block, isNewAdded)
             }
+
+            is NoteBlock.TaskListItem -> {
+                taskListItemBlock(blockContainerId, noteId, block, isNewAdded)
+            }
         }
 
         addBlockMenu(blockContainerId, noteId, block.blockId)
@@ -231,13 +236,48 @@ private fun TagConsumer<*>.imageNoteBlock(
     }
 }
 
+private fun TagConsumer<*>.taskListItemBlock(
+    blockContainerId: String,
+    noteId: Long,
+    block: NoteBlock.TaskListItem,
+    autoFocus: Boolean = false,
+) {
+    div(classes = "task-list-item") {
+        input(type = InputType.checkBox, classes = "task-list-checkbox") {
+            hxPost = "/notes/$noteId/blocks/${block.blockId}/checkbox"
+            hxTrigger = "change"
+            hxVals = "js:{check: this.checked}"
+            hxSwap = "none"
+
+            checked = block.checked
+            attributes["aria-label"] = "Mark task as completed"
+        }
+
+        textArea(classes = "text-block text-content task-list-text") {
+            id = "block-input-${block.blockId}"
+            this.autoFocus = autoFocus
+            rows = "1"
+            name = "text"
+            hxPost = "/notes/$noteId/blocks/${block.blockId}/text"
+            hxTrigger = "input changed delay:1s"
+            hxSwap = "none"
+
+            attributes["data-note-id"] = noteId.toString()
+            attributes["data-block-id"] = block.blockId.toString()
+            attributes["oninput"] = "resizeTextBlock(this)"
+            attributes["onkeydown"] = "handleTextBlockKeyDown(event, this)"
+
+            +block.text
+        }
+    }
+}
+
 private fun TagConsumer<*>.textNoteBlock(
     blockContainerId: String,
     noteId: Long,
     block: NoteBlock.Text,
     autoFocus: Boolean = false,
 ) {
-    val textAreaId = "block-input-${block.blockId}"
     val blockClass = when (block) {
         is NoteBlock.Text.Content -> "text-block text-content"
         is NoteBlock.Text.H1 -> "text-block text-t1"
@@ -246,7 +286,7 @@ private fun TagConsumer<*>.textNoteBlock(
         is NoteBlock.Text.H4 -> "text-block text-t4"
     }
     textArea(classes = blockClass) {
-        id = textAreaId
+        id = "block-input-${block.blockId}"
         this.autoFocus = autoFocus
 
         rows = "1"
@@ -273,6 +313,7 @@ private val blockMenu = listOf(
     "h4",
     "text",
     "image",
+    "task_list_item",
 )
 
 private fun TagConsumer<*>.addBlockMenu(
@@ -302,6 +343,7 @@ private fun TagConsumer<*>.addBlockMenu(
                         "h4" -> +"H4"
                         "text" -> +"Text"
                         "image" -> +"Image"
+                        "task_list_item" -> +"TODO List"
                     }
                 }
             }

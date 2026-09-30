@@ -121,7 +121,7 @@ abstract class DatabaseTest {
     fun changeTextBlockTypeAndContentTest() = withTestPgDatabase {
         val note = createNoteForUser("new note", 1)
         val block1 = createBlockAfter(note.id, "text", null)
-        val newBlock = updateTextBlockTypeAndContent(note.id, block1.id, "h1", "new c")
+        val newBlock = updateNoteBlock(note.id, block1.id, "h1", "new c")
         assertEquals("h1", newBlock!!.type)
         assertEquals("new c", newBlock.textContent)
     }
@@ -136,6 +136,15 @@ abstract class DatabaseTest {
         val updateTime2 = getNoteById(note.id)!!.updateAt
 
         assertTrue { updateTime2 > updateTime1 }
+    }
+
+    @Test
+    fun saveCheckedToBlockTest() = withTestPgDatabase {
+        val note = createNoteForUser("new note", 1)
+        val block1 = createBlockAfter(note.id, "text", null)
+        val retBlock = saveCheckedToBlock(note.id, block1.id, true)
+        assertTrue(retBlock!!.checked)
+        assertTrue(getNoteBlocksByNoteBlockId(block1.id)!!.checked)
     }
 
     fun withTestPgDatabase(

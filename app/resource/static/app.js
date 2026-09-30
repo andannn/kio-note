@@ -305,7 +305,7 @@ function focusAutoFocusBlock(root = document) {
 
 function handleMarkdownBlockShortcut(textarea) {
     let value = textarea.value
-    let markdownMarks = ["####", "###", "##", "#"]
+    let markdownMarks = ["####", "###", "##", "#", "[x]", "[ ]"]
 
     const mark = markdownMarks.find(it => value.startsWith(it))
     if (!mark) return false

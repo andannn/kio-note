@@ -71,6 +71,12 @@ class MigrationTest {
         }
     }
 
+    @Test
+    fun migrateFromVer2To3() = withTestPgDatabase {
+        assertIs<MigrationResult.Success>(migrate(migrations, targetVersion = 2))
+        assertIs<MigrationResult.Success>(migrate(migrations, targetVersion = 3))
+    }
+
     fun withTestPgDatabase(
         block: suspend PgConnection.() -> Unit
     ) = runPollEventLoop(Select) {

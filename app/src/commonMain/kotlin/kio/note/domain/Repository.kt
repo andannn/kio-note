@@ -19,10 +19,11 @@ import kio.note.database.getNoteBlocksByNoteBlockId
 import kio.note.database.getNoteById
 import kio.note.database.getUserByUsername
 import kio.note.database.getUserIdBySessionId
+import kio.note.database.saveCheckedToBlock
 import kio.note.database.saveImageToBlockAndChangeTypeToImage
 import kio.note.database.updateContentForTextBlock
 import kio.note.database.updateImageBlock
-import kio.note.database.updateTextBlockTypeAndContent
+import kio.note.database.updateNoteBlock
 import kio.note.util.Config
 import kio.note.util.hashPassword
 import kio.note.util.saveFileToPath
@@ -39,6 +40,7 @@ enum class BlockType {
     H4,
     TEXT,
     IMAGE,
+    TASK_LIST_ITEM,
     ;
 
     fun isTextBlock(): Boolean {
@@ -46,7 +48,8 @@ enum class BlockType {
                 this == H2 ||
                 this == H3 ||
                 this == H4 ||
-                this == TEXT
+                this == TEXT ||
+                this == TASK_LIST_ITEM
     }
 
     companion object {
@@ -88,6 +91,12 @@ sealed interface NoteBlock {
         override val blockId: Long,
         val url: String?,
     ) : NoteBlock
+
+    data class TaskListItem(
+        override val blockId: Long,
+        val checked: Boolean,
+        val text: String,
+    ) : NoteBlock
 }
 
 fun Repository(pgPool: PgConnectionPool): Repository = RepositoryImpl(pgPool)
@@ -106,11 +115,12 @@ interface Repository {
     suspend fun changeNoteTitleById(id: Long, title: String): Note?
     suspend fun deleteNoteById(id: Long)
     suspend fun addBlockAfter(noteId: Long, blockId: Long?, type: BlockType): NoteBlock?
-    suspend fun changeTextBlockType(noteId: Long, blockId: Long, type: BlockType, textContent: String): NoteBlock?
+    suspend fun updateNoteBlock(noteId: Long, blockId: Long, type: BlockType, textContent: String, extra: Any?): NoteBlock?
     suspend fun deleteBlock(noteId: Long, noteBlockId: Long)
     suspend fun saveImageToImageBlock(noteId: Long, noteBlockId: Long, fileSource: AsyncRawSource): NoteBlock.Image?
     suspend fun saveImageAndChangeBlockTypeToImage(noteId: Long, noteBlockId: Long, fileSource: AsyncRawSource): NoteBlock.Image?
     suspend fun saveTextToTextBlock(noteId: Long, noteBlockId: Long, content: String): NoteBlock.Text?
+    suspend fun saveCheckedToTaskListItemBlock(noteId: Long, noteBlockId: Long, checked: Boolean): NoteBlock.TaskListItem?
 }
 
 private class RepositoryImpl(
@@ -173,13 +183,20 @@ private class RepositoryImpl(
         return block.toNoteBlock()
     }
 
-    override suspend fun changeTextBlockType(
+    override suspend fun updateNoteBlock(
         noteId: Long,
         blockId: Long,
         type: BlockType,
-        textContent: String
+        textContent: String,
+        extra: Any?
     ): NoteBlock? {
-        val block = pgPool.useConnection { it.updateTextBlockTypeAndContent(noteId, blockId, type.toEntityType(), textContent) }
+        val block = pgPool.useConnection { c ->
+            if (type == BlockType.TASK_LIST_ITEM) {
+                c.updateNoteBlock(noteId, blockId, type.toEntityType(), textContent, checked = extra == true)
+            } else {
+                c.updateNoteBlock(noteId, blockId, type.toEntityType(), textContent)
+            }
+        }
         return block?.toNoteBlock()
     }
 
@@ -224,6 +241,18 @@ private class RepositoryImpl(
             ?.toNoteBlock() as? NoteBlock.Text
         return block
     }
+
+    override suspend fun saveCheckedToTaskListItemBlock(
+        noteId: Long,
+        noteBlockId: Long,
+        checked: Boolean
+    ): NoteBlock.TaskListItem? {
+        val oldBlock = pgPool.useConnection { it.getNoteBlocksByNoteBlockId(noteBlockId) }
+        if (oldBlock == null) return null
+
+        return pgPool.useConnection { it.saveCheckedToBlock(noteId, noteBlockId, checked) }
+            ?.toNoteBlock() as? NoteBlock.TaskListItem
+    }
 }
 
 private fun NoteUserEntity.toUser(): User = User(id = id, username = username, passwordHash = passwordHash)
@@ -236,6 +265,7 @@ private fun NoteBlockEntity.toNoteBlock(): NoteBlock = when (type) {
     NoteBlockEntity.BLOCK_TYPE_H4 -> NoteBlock.Text.H4(blockId = id, textContent ?: "")
     NoteBlockEntity.BLOCK_TYPE_TEXT -> NoteBlock.Text.Content(blockId = id, textContent ?: "")
     NoteBlockEntity.BLOCK_TYPE_IMAGE -> NoteBlock.Image(blockId = id, imageUrl)
+    NoteBlockEntity.BLOCK_TYPE_TASK_LIST_ITEM -> NoteBlock.TaskListItem(blockId = id, checked, textContent ?: "")
     else -> error("not valid block type $type")
 }
 
@@ -247,6 +277,7 @@ private fun BlockType.toEntityType(): String {
         BlockType.H2 -> NoteBlockEntity.BLOCK_TYPE_H2
         BlockType.H3 -> NoteBlockEntity.BLOCK_TYPE_H3
         BlockType.H4 -> NoteBlockEntity.BLOCK_TYPE_H4
+        BlockType.TASK_LIST_ITEM -> NoteBlockEntity.BLOCK_TYPE_TASK_LIST_ITEM
     }
 }
 

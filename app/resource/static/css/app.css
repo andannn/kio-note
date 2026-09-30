@@ -327,6 +327,30 @@ body {
     color: #707070;
 }
 
+.task-list-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.task-list-checkbox {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-top: 7px;
+    cursor: pointer;
+}
+
+.task-list-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.task-list-checkbox:checked + .task-list-text {
+    text-decoration: line-through;
+    opacity: 0.55;
+}
+
 /* Block menu */
 
 .block-menu {
