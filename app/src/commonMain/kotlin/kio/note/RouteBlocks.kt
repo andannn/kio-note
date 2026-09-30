@@ -179,7 +179,6 @@ private suspend fun CallContext.handleAddBlockAfter() {
     }
 }
 
-
 context(repo: Repository)
 private suspend fun CallContext.handleChangeCheckBox() {
     val noteId = requireNoteId()
