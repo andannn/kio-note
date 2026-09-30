@@ -1,35 +1,10 @@
 package kio.note
 
-import io.ktor.http.Cookie
-import io.ktor.http.HttpStatusCode
-import kio.async.AsyncRawSource
-import kio.http.CallContext
-import kio.http.Route
-import kio.http.appendCookie
-import kio.http.currentLogger
-import kio.http.currentLoggerOrNull
-import kio.http.delete
-import kio.http.get
-import kio.http.info
-import kio.http.patch
-import kio.http.post
-import kio.http.receiveFormParameters
-import kio.http.receiveMultipart
-import kio.http.respond
-import kio.http.respondHtml
-import kio.http.respondText
-import kio.http.route
-import kio.note.components.noteBlock
-import kio.note.components.noteContent
-import kio.note.components.noteItem
-import kio.note.components.noteList
-import kio.note.components.noteMainContentEmpty
-import kio.note.domain.BlockType
+import io.ktor.http.*
+import kio.http.*
 import kio.note.domain.Repository
 import kio.note.page.noteLoginPage
-import kio.note.util.hxSwapOob
 import kotlinx.html.div
-import kotlinx.html.id
 
 context(_: Repository)
 fun Route.notesLogin() {

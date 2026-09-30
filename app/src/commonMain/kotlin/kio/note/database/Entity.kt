@@ -1,5 +1,6 @@
 package kio.note.database
 
+import kio.postgres.types.PgBool
 import kio.postgres.types.PgInt8
 import kio.postgres.types.PgText
 import kio.postgres.types.PgTimestampTz
@@ -20,6 +21,8 @@ data class NoteBlockEntity(
     val textContent: PgText?,
     @SerialName("image_url")
     val imageUrl: PgText?,
+    @SerialName("checked")
+    val checked: PgBool = false,
 ) {
     companion object {
         const val BLOCK_TYPE_TEXT = "text"
@@ -28,6 +31,7 @@ data class NoteBlockEntity(
         const val BLOCK_TYPE_H2 = "h2"
         const val BLOCK_TYPE_H3 = "h3"
         const val BLOCK_TYPE_H4 = "h4"
+        const val BLOCK_TYPE_TASK_LIST_ITEM = "task-list-item"
     }
 }
 

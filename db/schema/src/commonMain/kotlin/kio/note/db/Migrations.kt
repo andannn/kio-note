@@ -6,6 +6,7 @@ import kio.postgres.migration.Migration
 val migrations get() = listOf(
     migration_1,
     migration_2,
+    migration_3,
 )
 
 suspend fun PgConnection.dropAllTables() {
@@ -92,4 +93,13 @@ on delete cascade;
 create index if not exists idx_notes_user_id
 on notes(user_id);
     """.trimIndent()
+)
+
+val migration_3 = Migration(
+    version = 3,
+    name = "migration_3",
+    sql = """
+alter table note_blocks
+add column checked boolean not null default false;
+""".trimIndent()
 )

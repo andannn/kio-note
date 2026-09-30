@@ -1,13 +1,11 @@
 package kio.note.domain
 
 import kio.async.AsyncRawSource
-import kio.http.currentLogger
-import kio.http.trace
+import kio.note.domain.NoteBlock.*
+import kio.note.domain.NoteBlock.Text.*
 import kio.note.util.Config
-import kio.note.util.saveFileToPath
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
-import kotlin.uuid.Uuid
 
 class MockRepositoryImpl : Repository {
     private val notes = mutableListOf(
@@ -23,6 +21,11 @@ class MockRepositoryImpl : Repository {
                     blockId = 1,
                     "This is the second paragraph."
                 ),
+                NoteBlock.TaskListItem(
+                    blockId = 2,
+                    checked = true,
+                    "This is the second paragraph."
+                )
             ),
         )
     )
@@ -85,6 +88,7 @@ class MockRepositoryImpl : Repository {
             BlockType.H2 -> NoteBlock.Text.H2(nextBlockId++, "")
             BlockType.H3 -> NoteBlock.Text.H3(nextBlockId++, "")
             BlockType.H4 -> NoteBlock.Text.H4(nextBlockId++, "")
+            BlockType.TASK_LIST_ITEM -> NoteBlock.TaskListItem(nextBlockId++, false, "")
         }
 
         val note = getNoteById(noteId) ?: return null
@@ -102,11 +106,12 @@ class MockRepositoryImpl : Repository {
         return newBlock
     }
 
-    override suspend fun changeTextBlockType(
+    override suspend fun updateNoteBlock(
         noteId: Long,
         blockId: Long,
         type: BlockType,
-        textContent: String
+        textContent: String,
+        extra: Any?
     ): NoteBlock? {
         val note = getNoteById(noteId) ?: return null
 
@@ -115,44 +120,52 @@ class MockRepositoryImpl : Repository {
 
         val newBlock = when (type) {
             BlockType.IMAGE -> {
-                NoteBlock.Image(
+                Image(
                     blockId = blockId,
                     url = null,
                 )
             }
 
             BlockType.TEXT -> {
-                NoteBlock.Text.Content(
+                Content(
                     blockId = blockId,
                     text = textContent,
                 )
             }
 
             BlockType.H1 -> {
-                NoteBlock.Text.H1(
+                H1(
                     blockId = blockId,
                     text = textContent,
                 )
             }
 
             BlockType.H2 -> {
-                NoteBlock.Text.H2(
+                H2(
                     blockId = blockId,
                     text = textContent,
                 )
             }
 
             BlockType.H3 -> {
-                NoteBlock.Text.H3(
+                H3(
                     blockId = blockId,
                     text = textContent,
                 )
             }
 
             BlockType.H4 -> {
-                NoteBlock.Text.H4(
+                H4(
                     blockId = blockId,
                     text = textContent,
+                )
+            }
+
+            BlockType.TASK_LIST_ITEM -> {
+                TaskListItem(
+                    blockId = blockId,
+                    text = textContent,
+                    checked = extra == true
                 )
             }
         }
@@ -224,6 +237,22 @@ class MockRepositoryImpl : Repository {
 
         val newBLock = oldBlock.copyText(content = content)
         return newBLock
+    }
+
+    override suspend fun saveCheckedToTaskListItemBlock(
+        noteId: Long,
+        noteBlockId: Long,
+        checked: Boolean
+    ): NoteBlock.TaskListItem? {
+        val note = getNoteById(noteId) ?: return null
+        val noteBlockIndex = note.blocks.indexOfFirst { it.blockId == noteBlockId }
+        if (noteBlockIndex == -1) return null
+        val oldBlock = note.blocks[noteBlockIndex] as? NoteBlock.TaskListItem ?: return null
+
+        val newBlock = oldBlock.copy(checked = checked)
+        note.blocks.removeAt(noteBlockIndex)
+        note.blocks.add(noteBlockIndex, newBlock)
+        return newBlock
     }
 
     private fun NoteBlock.Text.copyText(content: String): NoteBlock.Text = when (this) {
