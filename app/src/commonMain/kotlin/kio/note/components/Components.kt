@@ -307,7 +307,7 @@ private fun TagConsumer<*>.textNoteBlock(
     }
 }
 
-private val blockMenu = listOf(
+private val blockTypes = listOf(
     "h1",
     "h2",
     "h3",
@@ -329,7 +329,7 @@ private fun TagConsumer<*>.addBlockMenu(
         }
 
         div(classes = "block-menu-popup") {
-            blockMenu.forEach { item ->
+            blockTypes.forEach { item ->
                 button(classes = "block-menu-item") {
                     hxPost = "/notes/$noteId/blocks/$blockId/after?type=$item"
 

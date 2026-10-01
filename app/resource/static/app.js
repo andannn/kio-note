@@ -127,9 +127,12 @@ function addTextBlockAfter(element, noteId, blockId) {
         return
     }
 
+    const type = currentBlock.querySelector('.task-list-item')
+        ? 'task_list_item'
+        : 'text';
     return htmx.ajax(
         'POST',
-        `/notes/${noteId}/blocks/${blockId}/after?type=text`,
+        `/notes/${noteId}/blocks/${blockId}/after?type=${type}`,
         {
             target: `#${currentBlock.id}`,
             swap: 'afterend'

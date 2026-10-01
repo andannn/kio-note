@@ -180,15 +180,9 @@ private suspend fun CallContext.handleGetNote() {
 context(repo: Repository)
 private suspend fun CallContext.handleAddFirstBlock() {
     val noteId = requireNoteId()
-    val type = requestParameters["type"]
+    val type = requestParameters["type"]?.let { BlockType.parse(it) }
 
     if (type == null) {
-        respond(HttpStatusCode.BadRequest)
-        return
-    }
-
-    val blockType = BlockType.parse(type)
-    if (blockType == null) {
         respond(HttpStatusCode.BadRequest)
         return
     }
@@ -196,7 +190,7 @@ private suspend fun CallContext.handleAddFirstBlock() {
     val block = repo.addBlockAfter(
         noteId = noteId,
         blockId = null,
-        type = blockType,
+        type = type,
     )
 
     if (block == null) {
