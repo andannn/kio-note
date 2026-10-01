@@ -204,12 +204,12 @@ private suspend fun CallContext.handleChangeTextBlockType() {
     currentLogger().info("trying to change text block type for noteId=$noteId, noteBlock=$noteBlockId")
 
     if (textContent == null) {
-        respond(HttpStatusCode.BadRequest)
+        respond(HttpStatusCode.BadRequest, "text content is null")
         return
     }
     val (blockType, content, extra) = parseBlockTypeAndTextContent(textContent)
     if (blockType == null || !blockType.isTextBlock()) {
-        respond(HttpStatusCode.BadRequest)
+        respond(HttpStatusCode.BadRequest, "block type invalid. $blockType")
         return
     }
 
@@ -233,6 +233,6 @@ private fun parseBlockTypeAndTextContent(text: String): Triple<BlockType?, Strin
         text.startsWith("#") -> Triple(BlockType.H1, text.removePrefix("#"), null)
         text.startsWith("[x]") -> Triple(BlockType.TASK_LIST_ITEM, text.removePrefix("[x]"), true)
         text.startsWith("[ ]") -> Triple(BlockType.TASK_LIST_ITEM, text.removePrefix("[ ]"), false)
-        else -> Triple(null, text, null)
+        else -> Triple(BlockType.TEXT, text, null)
     }
 }

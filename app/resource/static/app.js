@@ -163,6 +163,7 @@ function handleTextBlockKeyDown(event, input) {
     const blockId = input.dataset.blockId
     const currentBlock = getBlockContainer(input)
     const blocks = currentBlock.parentElement
+    const containerId = input.dataset.blockContainerId
 
     if (event.key === " ") {
         if (handleMarkdownBlockShortcut(input)) {
@@ -184,6 +185,30 @@ function handleTextBlockKeyDown(event, input) {
             input,
             noteId,
             blockId
+        )
+
+        return
+    }
+
+    const needCheckEnterToClear = input.classList.contains('task-list-text')
+    if (
+        needCheckEnterToClear &&
+        event.key === 'Enter' &&
+        !event.shiftKey &&
+        input.value === ''
+    ) {
+        event.preventDefault()
+
+        htmx.ajax(
+            "POST",
+            `/notes/${noteId}/blocks/${blockId}/type`,
+            {
+                target: `#${containerId}`,
+                swap: "outerHTML",
+                values: {
+                    text: '',
+                },
+            }
         )
 
         return

@@ -168,8 +168,7 @@ private fun TagConsumer<*>.imageNoteBlock(
         attributes["data-note-id"] = noteId.toString()
         attributes["data-block-id"] = block.blockId.toString()
 
-        attributes["onkeydown"] =
-            "handleImageBlockKeyDown(event, this)"
+        attributes["onkeydown"] = "handleImageBlockKeyDown(event, this)"
 
         if (autoFocus) {
             attributes["data-autofocus"] = "true"
@@ -264,6 +263,8 @@ private fun TagConsumer<*>.taskListItemBlock(
 
             attributes["data-note-id"] = noteId.toString()
             attributes["data-block-id"] = block.blockId.toString()
+            attributes["data-block-container-id"] = blockContainerId
+
             attributes["oninput"] = "resizeTextBlock(this)"
             attributes["onkeydown"] = "handleTextBlockKeyDown(event, this)"
 
