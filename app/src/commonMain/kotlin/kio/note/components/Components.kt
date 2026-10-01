@@ -263,7 +263,6 @@ private fun TagConsumer<*>.taskListItemBlock(
 
             attributes["data-note-id"] = noteId.toString()
             attributes["data-block-id"] = block.blockId.toString()
-            attributes["data-block-container-id"] = blockContainerId
 
             attributes["oninput"] = "resizeTextBlock(this)"
             attributes["onkeydown"] = "handleTextBlockKeyDown(event, this)"
@@ -298,7 +297,6 @@ private fun TagConsumer<*>.textNoteBlock(
 
         attributes["data-note-id"] = noteId.toString()
         attributes["data-block-id"] = block.blockId.toString()
-        attributes["data-block-container-id"] = blockContainerId
 
         attributes["oninput"] = "resizeTextBlock(this)"
         attributes["onkeydown"] = "handleTextBlockKeyDown(event, this)"

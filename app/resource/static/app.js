@@ -166,7 +166,6 @@ function handleTextBlockKeyDown(event, input) {
     const blockId = input.dataset.blockId
     const currentBlock = getBlockContainer(input)
     const blocks = currentBlock.parentElement
-    const containerId = input.dataset.blockContainerId
 
     if (event.key === " ") {
         if (handleMarkdownBlockShortcut(input)) {
@@ -206,7 +205,7 @@ function handleTextBlockKeyDown(event, input) {
             "POST",
             `/notes/${noteId}/blocks/${blockId}/type`,
             {
-                target: `#${containerId}`,
+                target: `#${currentBlock.id}`,
                 swap: "outerHTML",
                 values: {
                     text: '',
@@ -340,7 +339,7 @@ function handleMarkdownBlockShortcut(textarea) {
 
     const noteId = textarea.dataset.noteId
     const blockId = textarea.dataset.blockId
-    const containerId = textarea.dataset.blockContainerId
+    const containerId = getBlockContainer(textarea).id
 
     htmx.ajax(
         "POST",
