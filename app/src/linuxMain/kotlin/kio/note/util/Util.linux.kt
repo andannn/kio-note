@@ -4,6 +4,7 @@ import kio.async.AsyncRawSink
 import kio.async.io.asyncRawSink
 import kio.async.open
 import kio.async.poller
+import kio.async.unlink
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.toKString
 import kotlinx.coroutines.currentCoroutineContext
@@ -20,4 +21,18 @@ internal actual suspend fun fileSink(path: String): AsyncRawSink {
     }
 
     return io.asyncRawSink(fd)
+}
+
+@OptIn(ExperimentalForeignApi::class)
+internal actual suspend fun removeFile(path: String) {
+    val io = currentCoroutineContext().poller.io
+    val result = io.unlink(path, 0)
+
+    if (result < 0) {
+        val errorCode = -result
+        val message = strerror(errorCode)?.toKString()
+            ?: "errno=$errorCode"
+
+        throw IOException("unlink failed for $path: $message")
+    }
 }

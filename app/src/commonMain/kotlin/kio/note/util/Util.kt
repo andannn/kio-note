@@ -31,3 +31,5 @@ internal fun sha256(data: ByteArray): ByteArray {
 }
 
 internal expect suspend fun fileSink(path: String): AsyncRawSink
+
+internal expect suspend fun removeFile(path: String)

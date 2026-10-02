@@ -21,3 +21,7 @@ internal actual suspend fun fileSink(path: String): AsyncRawSink {
         }
     }
 }
+
+internal actual suspend fun removeFile(path: String) {
+    SystemFileSystem.delete(path = Path(path), mustExist = true)
+}

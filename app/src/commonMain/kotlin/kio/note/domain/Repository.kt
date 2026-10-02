@@ -26,11 +26,11 @@ import kio.note.database.updateImageBlock
 import kio.note.database.updateNoteBlock
 import kio.note.util.Config
 import kio.note.util.hashPassword
+import kio.note.util.removeFile
 import kio.note.util.saveFileToPath
 import kio.postgres.conn.PgConnectionPool
 import kio.postgres.conn.useConnection
 import kotlinx.io.files.Path
-import kotlinx.io.files.SystemFileSystem
 import kotlin.uuid.Uuid
 
 enum class BlockType {
@@ -201,7 +201,10 @@ private class RepositoryImpl(
     }
 
     override suspend fun deleteBlock(noteId: Long, noteBlockId: Long) {
-        pgPool.useConnection { it.deleteBlockById(noteId, noteBlockId) }
+        val deletedUrl = pgPool.useConnection { it.deleteBlockById(noteId, noteBlockId) }
+        if (deletedUrl != null) {
+            removeFile(imageUrlToPath(deletedUrl))
+        }
     }
 
     override suspend fun saveImageToImageBlock(
@@ -293,9 +296,12 @@ suspend fun saveImageAndRemoveOldIfNotNull(
     currentLogger().trace("Save image finished to $filePath")
 
     if (oldImageUrl != null) {
-        val oldPath = Path(Config.UPLOAD_DIR, oldImageUrl.substringAfterLast("/"))
-        SystemFileSystem.delete(oldPath)
+        removeFile(imageUrlToPath(oldImageUrl))
     }
 
     return "/attachments/$uuid"
+}
+
+fun imageUrlToPath(url: String): String {
+    return Path(Config.UPLOAD_DIR, url.substringAfterLast("/")).toString()
 }

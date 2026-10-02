@@ -100,6 +100,7 @@ abstract class DatabaseTest {
         val newBlock = saveImageToBlockAndChangeTypeToImage(note.id, block1.id, "new url")
         assertEquals("new url", newBlock?.imageUrl)
         assertEquals("image", newBlock?.type)
+        assertEquals("new url", deleteBlockById(note.id, newBlock!!.id))
     }
 
     @Test
