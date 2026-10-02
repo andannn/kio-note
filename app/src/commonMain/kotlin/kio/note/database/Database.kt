@@ -207,8 +207,9 @@ suspend fun PgConnection.getNoteBlocksById(noteId: PgInt8): List<NoteBlockEntity
     return list
 }
 
+// return image_url or null if not image block
 suspend fun PgConnection.deleteBlockById(noteId: Long, blockId: Long): String? = transaction { t ->
-    @Serializable data class Ret(@SerialName("image_url") val imageUrl: PgText)
+    @Serializable data class Ret(@SerialName("image_url") val imageUrl: PgText?)
     val ret = t.query<Ret>("delete from note_blocks where id = $1 returning image_url") {
         param(blockId, PostgresInt8Serializer)
     }

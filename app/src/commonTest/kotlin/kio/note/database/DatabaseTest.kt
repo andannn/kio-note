@@ -13,6 +13,7 @@ import kotlinx.coroutines.withTimeout
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
 
@@ -60,7 +61,7 @@ abstract class DatabaseTest {
         assertEquals(0, getNoteBlocksById(note.id).size)
         val block1 = createBlockAfter(note.id, "text", null)
         assertEquals(1, getNoteBlocksById(note.id).size)
-        deleteBlockById(note.id, block1.id)
+        assertNull(deleteBlockById(note.id, block1.id))
         assertEquals(0, getNoteBlocksById(note.id).size)
     }
 
