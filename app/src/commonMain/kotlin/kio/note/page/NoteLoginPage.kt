@@ -82,5 +82,12 @@ fun TagConsumer<*>.noteLogin() {
                 }
             }
         }
+
+        p(classes = "auth-footer") {
+            +"Don't have an account? "
+            a(href = "/register") {
+                +"Create account"
+            }
+        }
     }
 }

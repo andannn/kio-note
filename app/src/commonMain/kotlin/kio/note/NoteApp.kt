@@ -14,7 +14,7 @@ import kio.tls.withServerTls
 import kotlinx.coroutines.withContext
 import kotlin.uuid.Uuid
 
-private val DATA_SOURCE = DataSourceType.PRODUCTION
+private val DATA_SOURCE = DataSourceType.MOCK
 
 suspend fun noteApp(serverSocket: ServerSocket) {
     val env = loadEnv()

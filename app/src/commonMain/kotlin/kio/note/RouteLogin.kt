@@ -4,10 +4,15 @@ import io.ktor.http.*
 import kio.http.*
 import kio.note.domain.Repository
 import kio.note.page.noteLoginPage
+import kio.note.page.noteRegisterPage
 import kotlinx.html.div
 
 context(_: Repository)
 fun Route.notesLogin() {
+    route("register") {
+        get { call -> call.noteRegisterPage() }
+    }
+
     route("login") {
         get { call -> call.noteLoginPage() }
         post { call -> call.handleLogin() }

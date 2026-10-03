@@ -678,3 +678,29 @@ body {
         padding: 28px 24px;
     }
 }
+
+.register-result:empty {
+    display: none;
+}
+
+.register-result {
+    color: #fca5a5;
+    font-size: 14px;
+    overflow-wrap: anywhere;
+}
+
+.auth-footer {
+    margin: 24px 0 0;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.auth-footer a {
+    color: var(--text-primary);
+    text-underline-offset: 3px;
+}
+
+.auth-footer a:hover {
+    color: #a5b4fc;
+}
