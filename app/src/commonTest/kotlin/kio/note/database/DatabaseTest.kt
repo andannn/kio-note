@@ -106,15 +106,22 @@ abstract class DatabaseTest {
 
     @Test
     fun getUserByUsernameTest() = withTestPgDatabase {
-        val user = createUser("userA", "pass")
+        val user = createUser("userA", "pass")!!
         assertEquals("userA", user.username)
         assertEquals("pass", user.passwordHash)
         assertEquals(user, getUserByUsername(user.username))
     }
 
     @Test
+    fun createUserDuplicatedTest() = withTestPgDatabase {
+        val user1 = createUser("userA", "pass")!!
+        val user2 = createUser("userA", "pass1")
+        assertNull(user2)
+    }
+
+    @Test
     fun sessionTest() = withTestPgDatabase {
-        val user = createUser(userName = "1", passwordHash = "pas")
+        val user = createUser(userName = "1", passwordHash = "pas")!!
         createSession(user.id, "12345")
         assertEquals(user.id, getUserIdBySessionId("12345"))
     }

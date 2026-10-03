@@ -50,6 +50,10 @@ class MockRepositoryImpl : Repository {
         return Session(1)
     }
 
+    override suspend fun createUser(userName: String, password: String): User? {
+        return User(1, "aa", "asdf")
+    }
+
     override suspend fun createNewNoteForUser(userId: Long): Note {
         val newNote = Note(nextNoteId++, title = "Untitled")
         notes.add(0, newNote)

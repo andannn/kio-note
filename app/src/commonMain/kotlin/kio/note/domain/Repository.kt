@@ -11,6 +11,7 @@ import kio.note.database.changeNoteTitle
 import kio.note.database.createBlockAfter
 import kio.note.database.createNoteForUser
 import kio.note.database.createSession
+import kio.note.database.createUser
 import kio.note.database.deleteBlockById
 import kio.note.database.deleteNoteById
 import kio.note.database.getAllNote
@@ -107,6 +108,7 @@ interface Repository {
     suspend fun verifyPassword(user: User, password: String): Boolean
     suspend fun createSession(userId: Long): String
     suspend fun getSessionById(sessionId: String): Session?
+    suspend fun createUser(userName: String, password: String): User?
 
     // note
     suspend fun createNewNoteForUser(userId: Long): Note
@@ -150,6 +152,11 @@ private class RepositoryImpl(
     override suspend fun getSessionById(sessionId: String): Session? {
         val userId = pgPool.useConnection { it.getUserIdBySessionId(sessionId) } ?: return null
         return Session(userId)
+    }
+
+    override suspend fun createUser(userName: String, password: String): User? {
+        val actualHash = hashPassword(password)
+        return pgPool.useConnection { it.createUser(userName, actualHash) }?.toUser()
     }
 
     override suspend fun createNewNoteForUser(userId: Long): Note {

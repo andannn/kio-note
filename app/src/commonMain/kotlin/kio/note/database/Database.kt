@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.toCollection
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-suspend fun PgConnection.createUser(userName: String, passwordHash: String): NoteUserEntity {
+suspend fun PgConnection.createUser(userName: String, passwordHash: String): NoteUserEntity? {
     val ret: Flow<NoteUserEntity> = query(
         """
         insert into users (
@@ -24,17 +24,14 @@ suspend fun PgConnection.createUser(userName: String, passwordHash: String): Not
             password_hash
         )
         values ($1, $2)
-        returning
-            id,
-            username,
-            password_hash,
-            create_at
+        ON CONFLICT (username) DO NOTHING
+        returning id, username, password_hash, create_at
         """.trimIndent()
     ) {
         param(userName, PostgresTextSerializer)
         param(passwordHash, PostgresTextSerializer)
     }
-    return ret.firstOrNull() ?: error("user create failed")
+    return ret.firstOrNull()
 }
 
 suspend fun PgConnection.createSession(userId: Long, sessionId: String) {
