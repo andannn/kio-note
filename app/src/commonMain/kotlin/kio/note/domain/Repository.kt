@@ -171,7 +171,12 @@ private class RepositoryImpl(
     }
 
     override suspend fun deleteNoteById(id: Long) {
-        pgPool.useConnection { it.deleteNoteById(id) }
+        pgPool.useConnection { c ->
+            val imageUrls = c.getNoteBlocksById(id).mapNotNull { it.imageUrl }
+            c.deleteNoteById(id)
+
+            imageUrls.forEach { removeFile(imageUrlToPath(it)) }
+        }
     }
 
     override suspend fun addBlockAfter(
