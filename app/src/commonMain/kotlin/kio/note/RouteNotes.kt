@@ -168,7 +168,12 @@ private suspend fun CallContext.handleGetNote() {
 
     val note = repo.getNoteById(id)
     if (note == null) {
-        respond(HttpStatusCode.NotFound)
+        respond(
+            HttpStatusCode.OK,
+            configHeaders = {
+                append("HX-Redirect", "/404")
+            }
+        )
         return
     }
 

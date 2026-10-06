@@ -5,6 +5,7 @@ import kio.async.io.getEnv
 import kio.http.*
 import kio.note.domain.MockRepositoryImpl
 import kio.note.domain.Repository
+import kio.note.page.note404Page
 import kio.note.page.noteMainPage
 import kio.note.util.Env
 import kio.postgres.conn.PgConnectionPool
@@ -31,6 +32,8 @@ suspend fun noteApp(serverSocket: ServerSocket) {
                     get("/") { call -> call.noteMainPage() }
                     notesRoute()
                 }
+
+                get("/404") { call -> call.note404Page() }
 
                 staticResource("/attachments", "data/uploads")
                 staticResource("/", "resource")
