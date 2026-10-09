@@ -214,6 +214,7 @@ body {
     display: flex;
     align-items: center;
     gap: 16px;
+    margin-bottom: 28px;
 }
 
 .note-header .note-title {
@@ -224,23 +225,30 @@ body {
 .note-export {
     flex-shrink: 0;
     padding: 6px 12px;
-    border: 1px solid var(--border, #444);
+    border: 1px solid var(--border-strong);
     border-radius: 6px;
-    color: inherit;
+    color: var(--text-secondary);
     font-size: 14px;
+    line-height: 1.5;
+    white-space: nowrap;
     text-decoration: none;
-    opacity: 0.7;
 }
 
 .note-export:hover {
-    opacity: 1;
+    background: var(--hover-bg);
+    color: var(--text-primary);
+}
+
+.note-export:focus-visible {
+    outline: 2px solid var(--text-secondary);
+    outline-offset: 3px;
 }
 
 .note-title {
     display: block;
 
     width: 100%;
-    margin: 0 0 28px;
+    margin: 0;
     padding: 0;
 
     border: 0;
