@@ -195,13 +195,18 @@ suspend fun PgConnection.getNoteBlocksByNoteBlockId(noteBlockId: PgInt8): NoteBl
 }
 
 suspend fun PgConnection.getNoteBlocksById(noteId: PgInt8): List<NoteBlockEntity> {
+    val ret = getNoteBlocksFlow(noteId)
+    val list = mutableListOf<NoteBlockEntity>()
+    ret.toCollection(list)
+    return list
+}
+
+fun PgConnection.getNoteBlocksFlow(noteId: PgInt8): Flow<NoteBlockEntity> {
     val ret: Flow<NoteBlockEntity> =
         query("select * from note_blocks where note_id = $1 order by sort_order") {
             param(noteId, PostgresInt8Serializer)
         }
-    val list = mutableListOf<NoteBlockEntity>()
-    ret.toCollection(list)
-    return list
+    return ret
 }
 
 // return image_url or null if not image block

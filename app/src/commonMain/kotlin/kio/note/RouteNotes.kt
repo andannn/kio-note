@@ -1,6 +1,7 @@
 package kio.note
 
 import io.ktor.http.HttpStatusCode
+import kio.async.writeString
 import kio.http.CallContext
 import kio.http.CallInterceptor
 import kio.http.Route
@@ -11,6 +12,7 @@ import kio.http.post
 import kio.http.receiveFormParameters
 import kio.http.respond
 import kio.http.respondHtml
+import kio.http.respondWithSink
 import kio.http.route
 import kio.note.components.noteBlock
 import kio.note.components.noteContent
@@ -18,6 +20,7 @@ import kio.note.components.noteItem
 import kio.note.components.noteList
 import kio.note.components.noteMainContentEmpty
 import kio.note.domain.BlockType
+import kio.note.domain.NoteBlock
 import kio.note.domain.Repository
 import kio.note.page.noteMainPage
 import kio.note.util.hxSwapOob
@@ -41,6 +44,10 @@ fun Route.notesRoute() {
             inject(NoteId()) {
                 get { call -> call.noteMainPage(noteId = requireNoteId()) }
                 delete { call -> call.handleDeleteNote() }
+
+                route("export") {
+                    get { call -> call.handleExportNote()  }
+                }
 
                 route("editor") {
                     get { call -> call.handleGetNote() }
@@ -200,5 +207,36 @@ private suspend fun CallContext.handleAddFirstBlock() {
 
     respondHtml {
         noteBlock(noteId, block, isNewAdded = true)
+    }
+}
+
+context(repo: Repository)
+private suspend fun CallContext.handleExportNote() {
+    val note = repo.getNoteById(requireNoteId())
+    if (note == null) {
+        respond(HttpStatusCode.NotFound)
+        return
+    }
+
+    respondWithSink(
+        HttpStatusCode.OK,
+        configHeaders = {
+            append("Content-Disposition", "attachment; filename=${note.title}.md")
+        }
+    ) { sink ->
+        repo.getNoteBlocksFlow(note.id).collect { block ->
+            val markdownBlock = when (block) {
+                is NoteBlock.Image -> TODO("output image block?")
+                is NoteBlock.TaskListItem -> """- [${if(block.checked) "x" else " " }] ${block.text}"""
+                is NoteBlock.Text.Content -> block.text
+                is NoteBlock.Text.H1 -> "# ${block.text}"
+                is NoteBlock.Text.H2 -> "## ${block.text}"
+                is NoteBlock.Text.H3 -> "### ${block.text}"
+                is NoteBlock.Text.H4 -> "#### ${block.text}"
+            }
+
+            sink.writeString(markdownBlock)
+            sink.writeString("\n\n")
+        }
     }
 }

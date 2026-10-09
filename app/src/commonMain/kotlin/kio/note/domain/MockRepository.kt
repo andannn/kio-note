@@ -4,6 +4,8 @@ import kio.async.AsyncRawSource
 import kio.note.domain.NoteBlock.*
 import kio.note.domain.NoteBlock.Text.*
 import kio.note.util.Config
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 
@@ -66,6 +68,13 @@ class MockRepositoryImpl : Repository {
 
     override suspend fun getNoteById(id: Long): Note? {
         return notes.firstOrNull { it.id == id }
+    }
+
+    override suspend fun getNoteBlocksFlow(id: Long): Flow<NoteBlock> {
+        return flow {
+            val notes = notes.firstOrNull { it.id == id }?.blocks?.toList()?: listOf<NoteBlock>()
+            notes.forEach { emit(it) }
+        }
     }
 
     override suspend fun changeNoteTitleById(id: Long, title: String): Note? {

@@ -17,6 +17,7 @@ import kio.note.database.deleteNoteById
 import kio.note.database.getAllNote
 import kio.note.database.getNoteBlocksById
 import kio.note.database.getNoteBlocksByNoteBlockId
+import kio.note.database.getNoteBlocksFlow
 import kio.note.database.getNoteById
 import kio.note.database.getUserByUsername
 import kio.note.database.getUserIdBySessionId
@@ -31,6 +32,8 @@ import kio.note.util.removeFile
 import kio.note.util.saveFileToPath
 import kio.postgres.conn.PgConnectionPool
 import kio.postgres.conn.useConnection
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.io.files.Path
 import kotlin.uuid.Uuid
 
@@ -114,6 +117,7 @@ interface Repository {
     suspend fun createNewNoteForUser(userId: Long): Note
     suspend fun getAllNoteMetaData(userId: Long): List<Note>
     suspend fun getNoteById(id: Long): Note?
+    suspend fun getNoteBlocksFlow(id: Long): Flow<NoteBlock>
     suspend fun changeNoteTitleById(id: Long, title: String): Note?
     suspend fun deleteNoteById(id: Long)
     suspend fun addBlockAfter(noteId: Long, blockId: Long?, type: BlockType): NoteBlock?
@@ -171,6 +175,10 @@ private class RepositoryImpl(
         val noteBlocks = pgPool.useConnection { it.getNoteBlocksById(id) }.map { it.toNoteBlock() }
         val note = pgPool.useConnection { it.getNoteById(id) }?.toNote()
         return note?.copy(blocks = noteBlocks.toMutableList())
+    }
+
+    override suspend fun getNoteBlocksFlow(id: Long): Flow<NoteBlock> {
+        return pgPool.useConnection { it.getNoteBlocksFlow(id).map { it.toNoteBlock() } }
     }
 
     override suspend fun changeNoteTitleById(id: Long, title: String): Note? {

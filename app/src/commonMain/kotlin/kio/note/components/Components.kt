@@ -99,13 +99,22 @@ fun TagConsumer<*>.noteContent(note: Note) {
             value = note.id.toString()
         }
 
-        input(classes = "note-title") {
-            name = "title"
-            value = note.title
+        div(classes = "note-header") {
+            input(classes = "note-title") {
+                name = "title"
+                value = note.title
 
-            hxPatch = "/notes/${note.id}/title"
-            hxTrigger = "input changed delay:500ms"
-            hxSwap = "none"
+                hxPatch = "/notes/${note.id}/title"
+                hxTrigger = "input changed delay:500ms"
+                hxSwap = "none"
+            }
+
+            a(
+                href = "/notes/${note.id}/export",
+                classes = "note-export"
+            ) {
+                +"Export"
+            }
         }
 
         div(classes = "note-blocks") {
