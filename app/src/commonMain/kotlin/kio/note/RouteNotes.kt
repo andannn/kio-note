@@ -232,6 +232,10 @@ private suspend fun CallContext.handleExportNote() {
     ) { sink ->
         sink.writeZip {
             val baseFolder = note.title
+                .replace(Regex("""[<>:"/\\|?*\x00-\x1F]"""), "_")
+                .trim()
+                .trimEnd('.')
+                .ifEmpty { "note-${note.id}" }
             val imageUrls = mutableListOf<String>()
             file("${baseFolder}/content.md") { zipSink ->
                 repo.getNoteBlocksFlow(note.id).collect { block ->
