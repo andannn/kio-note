@@ -190,7 +190,7 @@ private class RepositoryImpl(
             val imageUrls = c.getNoteBlocksById(id).mapNotNull { it.imageUrl }
             c.deleteNoteById(id)
 
-            imageUrls.forEach { removeFile(imageUrlToPath(it)) }
+            imageUrls.forEach { removeFile(imageUrlToLocalPath(it)) }
         }
     }
 
@@ -223,7 +223,7 @@ private class RepositoryImpl(
     override suspend fun deleteBlock(noteId: Long, noteBlockId: Long) {
         val deletedUrl = pgPool.useConnection { it.deleteBlockById(noteId, noteBlockId) }
         if (deletedUrl != null) {
-            removeFile(imageUrlToPath(deletedUrl))
+            removeFile(imageUrlToLocalPath(deletedUrl))
         }
     }
 
@@ -316,12 +316,16 @@ suspend fun saveImageAndRemoveOldIfNotNull(
     currentLogger().trace("Save image finished to $filePath")
 
     if (oldImageUrl != null) {
-        removeFile(imageUrlToPath(oldImageUrl))
+        removeFile(imageUrlToLocalPath(oldImageUrl))
     }
 
     return "/attachments/$uuid"
 }
 
-fun imageUrlToPath(url: String): String {
-    return Path(Config.UPLOAD_DIR, url.substringAfterLast("/")).toString()
+fun imageUrlToLocalPath(url: String): String {
+    return Path(Config.UPLOAD_DIR, imageFileName(url)).toString()
+}
+
+fun imageFileName(url: String): String {
+    return url.substringAfterLast("/")
 }

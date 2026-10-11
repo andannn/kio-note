@@ -1,7 +1,10 @@
 package kio.note
 
 import io.ktor.http.HttpStatusCode
+import kio.async.buffered
 import kio.async.writeString
+import kio.compression.file
+import kio.compression.writeZip
 import kio.http.CallContext
 import kio.http.CallInterceptor
 import kio.http.Route
@@ -22,7 +25,10 @@ import kio.note.components.noteMainContentEmpty
 import kio.note.domain.BlockType
 import kio.note.domain.NoteBlock
 import kio.note.domain.Repository
+import kio.note.domain.imageFileName
+import kio.note.domain.imageUrlToLocalPath
 import kio.note.page.noteMainPage
+import kio.note.util.fileSource
 import kio.note.util.hxSwapOob
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.withContext
@@ -221,22 +227,44 @@ private suspend fun CallContext.handleExportNote() {
     respondWithSink(
         HttpStatusCode.OK,
         configHeaders = {
-            append("Content-Disposition", "attachment; filename=${note.title}.md")
+            append("Content-Disposition", "attachment; filename=${note.title}.zip")
         }
     ) { sink ->
-        repo.getNoteBlocksFlow(note.id).collect { block ->
-            val markdownBlock = when (block) {
-                is NoteBlock.Image -> TODO("output image block?")
-                is NoteBlock.TaskListItem -> """- [${if(block.checked) "x" else " " }] ${block.text}"""
-                is NoteBlock.Text.Content -> block.text
-                is NoteBlock.Text.H1 -> "# ${block.text}"
-                is NoteBlock.Text.H2 -> "## ${block.text}"
-                is NoteBlock.Text.H3 -> "### ${block.text}"
-                is NoteBlock.Text.H4 -> "#### ${block.text}"
+        sink.writeZip {
+            val baseFolder = note.title
+            val imageUrls = mutableListOf<String>()
+            file("${baseFolder}/content.md") { zipSink ->
+                repo.getNoteBlocksFlow(note.id).collect { block ->
+                    val markdownBlock = when (block) {
+                        is NoteBlock.Image -> {
+                            if (block.url != null) {
+                                imageUrls.add(block.url)
+                                "![${block.blockId}](./${imageFileName(block.url)})"
+                            } else {
+                                ""
+                            }
+                        }
+                        is NoteBlock.TaskListItem -> """- [${if(block.checked) "x" else " " }] ${block.text}"""
+                        is NoteBlock.Text.Content -> block.text
+                        is NoteBlock.Text.H1 -> "# ${block.text}"
+                        is NoteBlock.Text.H2 -> "## ${block.text}"
+                        is NoteBlock.Text.H3 -> "### ${block.text}"
+                        is NoteBlock.Text.H4 -> "#### ${block.text}"
+                    }
+
+                    zipSink.writeString(markdownBlock)
+                    zipSink.writeString("\n\n")
+                }
             }
 
-            sink.writeString(markdownBlock)
-            sink.writeString("\n\n")
+            imageUrls.forEach { url ->
+                val fileName = imageFileName(url)
+                val localPath = imageUrlToLocalPath(url)
+                file("${baseFolder}/${fileName}") { sink ->
+                    val source = fileSource(localPath).buffered()
+                    sink.transferFrom(source)
+                }
+            }
         }
     }
 }

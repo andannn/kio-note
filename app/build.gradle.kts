@@ -31,6 +31,7 @@ kotlin {
         commonMain.dependencies {
             implementation(project(":db:schema"))
             implementation(libs.kio.http)
+            implementation(libs.kio.compression)
             implementation(libs.hash.sha2)
             implementation(libs.kio.tls)
             implementation(libs.kio.postgres.connection)

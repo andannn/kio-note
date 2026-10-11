@@ -6,6 +6,7 @@ hash = "0.5.6"
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kio-http = { module = "io.github.kio-labs:kio-http", version.ref = "kio" }
+kio-compression = { module = "io.github.kio-labs:kio-compression", version.ref = "kio" }
 kio-tls = { module = "io.github.kio-labs:kio-tls", version.ref = "kio" }
 kio-postgres-connection = { module = "io.github.kio-labs:postgres-connection", version.ref = "kio" }
 kio-postgres-migration = { module = "io.github.kio-labs:postgres-migration", version.ref = "kio" }
