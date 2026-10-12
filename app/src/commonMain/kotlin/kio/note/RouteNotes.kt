@@ -124,7 +124,7 @@ private suspend fun CallContext.handleNewNote() {
             this.id = "note-content"
             hxSwapOob = "innerHTML"
 
-            noteContent(newNote)
+            noteContent(newNote, focusFirstBlock = true)
         }
     }
 }
@@ -186,7 +186,7 @@ private suspend fun CallContext.handleGetNote() {
     }
 
     respondHtml {
-        noteContent(note)
+        noteContent(note, focusFirstBlock = false)
     }
 }
 

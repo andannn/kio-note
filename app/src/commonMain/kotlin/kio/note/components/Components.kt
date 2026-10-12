@@ -91,7 +91,7 @@ fun TagConsumer<*>.noteItem(note: Note, selected: Boolean = false) {
     }
 }
 
-fun TagConsumer<*>.noteContent(note: Note) {
+fun TagConsumer<*>.noteContent(note: Note, focusFirstBlock: Boolean) {
     article(classes = "note-document") {
         hiddenInput {
             id = "current-note-id"
@@ -123,8 +123,12 @@ fun TagConsumer<*>.noteContent(note: Note) {
             if (note.blocks.isEmpty()) {
                 emptyNoteBlocks(note.id)
             } else {
-                note.blocks.forEach { block ->
-                    noteBlock(note.id, block)
+                note.blocks.forEachIndexed { index, block ->
+                    if (index == 0 && focusFirstBlock) {
+                        noteBlock(note.id, block, autoFocus = true)
+                    } else {
+                        noteBlock(note.id, block, autoFocus = false)
+                    }
                 }
             }
         }
