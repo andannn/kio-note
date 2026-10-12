@@ -303,6 +303,11 @@ private fun TagConsumer<*>.codeNoteBlock(
 
         div(classes = "block-toolbar") {
             button(classes = "block-toolbar-action", type = ButtonType.button) {
+                attributes["onclick"] =
+                    "setClipboard(this.closest('.code-block').querySelector('.code-block-preview code'))"
+                +"Copy"
+            }
+            button(classes = "block-toolbar-action", type = ButtonType.button) {
                 attributes["onclick"] = "editCodeBlock(this.closest('.code-block'))"
                 +"Edit"
             }

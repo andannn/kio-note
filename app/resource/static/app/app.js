@@ -411,11 +411,18 @@ function editCodeBlock(block) {
 }
 
 function previewCodeBlock(input) {
-    console.log("previewCodeBlock")
     const block = input.closest('.code-block');
     const code = block.querySelector('pre code');
+
+    // Sync editor content to preview
+    code.textContent = input.value;
+
     code.removeAttribute('data-highlighted');
     code.className = '';
     block.classList.remove('is-editing');
     if (window.hljs) hljs.highlightElement(code);
+}
+
+function setClipboard(element) {
+    navigator.clipboard.writeText(element.textContent);
 }

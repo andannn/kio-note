@@ -254,7 +254,11 @@ private suspend fun CallContext.handleExportNote() {
                         is NoteBlock.Text.H2 -> "## ${block.text}"
                         is NoteBlock.Text.H3 -> "### ${block.text}"
                         is NoteBlock.Text.H4 -> "#### ${block.text}"
-                        is NoteBlock.Code -> TODO()
+                        is NoteBlock.Code -> """
+```
+${block.text}
+```
+                        """.trimIndent()
                     }
 
                     zipSink.writeString(markdownBlock)

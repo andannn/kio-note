@@ -41,7 +41,7 @@ class MockRepositoryImpl : Repository {
     )
 
     private var nextNoteId = 3L
-    private var nextBlockId = 2L
+    private var nextBlockId = notes.first().blocks.size.toLong()
 
     override suspend fun findUserByUsername(userName: String): User? {
         return User(1, "Test", "has")
