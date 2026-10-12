@@ -45,6 +45,7 @@ enum class BlockType {
     TEXT,
     IMAGE,
     TASK_LIST_ITEM,
+    CODE,
     ;
 
     fun isTextBlock(): Boolean {
@@ -53,6 +54,7 @@ enum class BlockType {
                 this == H3 ||
                 this == H4 ||
                 this == TEXT ||
+                this == CODE ||
                 this == TASK_LIST_ITEM
     }
 
@@ -101,6 +103,11 @@ sealed interface NoteBlock {
         val checked: Boolean,
         val text: String,
     ) : NoteBlock
+
+    data class Code(
+        override val blockId: Long,
+        val text: String,
+    ): NoteBlock
 }
 
 fun Repository(pgPool: PgConnectionPool): Repository = RepositoryImpl(pgPool)
@@ -289,6 +296,7 @@ private fun NoteBlockEntity.toNoteBlock(): NoteBlock = when (type) {
     NoteBlockEntity.BLOCK_TYPE_TEXT -> NoteBlock.Text.Content(blockId = id, textContent ?: "")
     NoteBlockEntity.BLOCK_TYPE_IMAGE -> NoteBlock.Image(blockId = id, imageUrl)
     NoteBlockEntity.BLOCK_TYPE_TASK_LIST_ITEM -> NoteBlock.TaskListItem(blockId = id, checked, textContent ?: "")
+    NoteBlockEntity.BLOCK_TYPE_CODE -> NoteBlock.Code(blockId = id, textContent ?: "")
     else -> error("not valid block type $type")
 }
 
@@ -301,6 +309,7 @@ private fun BlockType.toEntityType(): String {
         BlockType.H3 -> NoteBlockEntity.BLOCK_TYPE_H3
         BlockType.H4 -> NoteBlockEntity.BLOCK_TYPE_H4
         BlockType.TASK_LIST_ITEM -> NoteBlockEntity.BLOCK_TYPE_TASK_LIST_ITEM
+        BlockType.CODE -> NoteBlockEntity.BLOCK_TYPE_CODE
     }
 }
 

@@ -212,7 +212,7 @@ private suspend fun CallContext.handleAddFirstBlock() {
     }
 
     respondHtml {
-        noteBlock(noteId, block, isNewAdded = true)
+        noteBlock(noteId, block, autoFocus = true)
     }
 }
 
@@ -254,6 +254,7 @@ private suspend fun CallContext.handleExportNote() {
                         is NoteBlock.Text.H2 -> "## ${block.text}"
                         is NoteBlock.Text.H3 -> "### ${block.text}"
                         is NoteBlock.Text.H4 -> "#### ${block.text}"
+                        is NoteBlock.Code -> TODO()
                     }
 
                     zipSink.writeString(markdownBlock)

@@ -1,9 +1,11 @@
 package kio.note.util
 
 object Config {
-    const val APP_CSS = "/static/css/app.css"
-    const val APP_JS = "/static/app.js"
-    const val HTMX_MIN_JS = "/static/htmx.min.js"
+    const val APP_CSS = "/static/app/app.css"
+    const val APP_JS = "/static/app/app.js"
+    const val HIGHLIGHT_CSS = "/static/highlight/github-dark.min.css"
+    const val HIGHLIGHT_JS = "/static/highlight/highlight.min.js"
+    const val HTMX_MIN_JS = "/static/htmx/htmx.min.js"
     const val UPLOAD_DIR = "./data/uploads/"
 }
 

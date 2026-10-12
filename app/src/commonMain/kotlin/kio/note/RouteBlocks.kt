@@ -114,7 +114,7 @@ private suspend fun CallContext.handleUploadImageBlock() {
     }
 
     respondHtml {
-        noteBlock(noteId, image, isNewAdded = true)
+        noteBlock(noteId, image, autoFocus = true)
     }
 }
 
@@ -146,7 +146,7 @@ private suspend fun CallContext.handlePasteImageToTextBlock() {
     }
 
     respondHtml {
-        noteBlock(noteId, image, isNewAdded = true)
+        noteBlock(noteId, image, autoFocus = true)
     }
 }
 
@@ -175,7 +175,7 @@ private suspend fun CallContext.handleAddBlockAfter() {
     }
 
     respondHtml {
-        noteBlock(noteId, newBlock, isNewAdded = true)
+        noteBlock(noteId, newBlock, autoFocus = true)
     }
 }
 
@@ -213,7 +213,6 @@ private suspend fun CallContext.handleChangeTextBlockType() {
         return
     }
 
-
     val block = repo.updateNoteBlock(noteId, noteBlockId, blockType, content, extra)
     if (block == null) {
         respond(HttpStatusCode.NotFound)
@@ -221,7 +220,7 @@ private suspend fun CallContext.handleChangeTextBlockType() {
     }
 
     respondHtml {
-        noteBlock(noteId, block)
+        noteBlock(noteId, block, autoFocus = true)
     }
 }
 
@@ -233,6 +232,7 @@ private fun parseBlockTypeAndTextContent(text: String): Triple<BlockType?, Strin
         text.startsWith("#") -> Triple(BlockType.H1, text.removePrefix("#"), null)
         text.startsWith("[x]") -> Triple(BlockType.TASK_LIST_ITEM, text.removePrefix("[x]"), true)
         text.startsWith("[ ]") -> Triple(BlockType.TASK_LIST_ITEM, text.removePrefix("[ ]"), false)
+        text.startsWith("```") -> Triple(BlockType.CODE, text.removePrefix("```"), null)
         else -> Triple(BlockType.TEXT, text, null)
     }
 }

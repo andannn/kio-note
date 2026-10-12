@@ -32,6 +32,7 @@ data class NoteBlockEntity(
         const val BLOCK_TYPE_H3 = "h3"
         const val BLOCK_TYPE_H4 = "h4"
         const val BLOCK_TYPE_TASK_LIST_ITEM = "task-list-item"
+        const val BLOCK_TYPE_CODE = "code"
     }
 }
 

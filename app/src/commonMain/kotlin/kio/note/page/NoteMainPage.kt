@@ -26,7 +26,9 @@ fun TagConsumer<*>.kNoteHead(title: String) {
     head {
         script(src = Config.HTMX_MIN_JS) { }
         script(src = Config.APP_JS) { }
+        script(src = Config.HIGHLIGHT_JS) { }
         link(rel = "stylesheet", href = Config.APP_CSS)
+        link(rel = "stylesheet", href = Config.HIGHLIGHT_CSS)
         title { +title }
     }
 }

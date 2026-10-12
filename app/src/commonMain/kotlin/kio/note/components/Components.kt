@@ -131,22 +131,26 @@ fun TagConsumer<*>.noteContent(note: Note) {
     }
 }
 
-fun TagConsumer<*>.noteBlock(noteId: Long, block: NoteBlock, isNewAdded: Boolean = false) {
+fun TagConsumer<*>.noteBlock(noteId: Long, block: NoteBlock, autoFocus: Boolean = false) {
     div(classes = "note-block") {
         val blockContainerId = "block-${block.blockId}"
         id = blockContainerId
 
         when (block) {
             is NoteBlock.Text -> {
-                textNoteBlock(blockContainerId, noteId, block, isNewAdded)
+                textNoteBlock(noteId, block, autoFocus)
             }
 
             is NoteBlock.Image -> {
-                imageNoteBlock(blockContainerId, noteId, block, isNewAdded)
+                imageNoteBlock(blockContainerId, noteId, block, autoFocus)
             }
 
             is NoteBlock.TaskListItem -> {
-                taskListItemBlock(blockContainerId, noteId, block, isNewAdded)
+                taskListItemBlock(noteId, block, autoFocus)
+            }
+
+            is NoteBlock.Code -> {
+                codeNoteBlock(noteId, block, autoFocus)
             }
         }
 
@@ -213,9 +217,9 @@ private fun TagConsumer<*>.imageNoteBlock(
             )
         }
 
-        div(classes = "image-block-actions") {
+        div(classes = "block-toolbar") {
             if (block.url != null) {
-                label(classes = "image-block-action") {
+                label(classes = "block-toolbar-action") {
                     input(classes = "image-upload-input") {
                         type = InputType.file
                         name = "image"
@@ -233,7 +237,7 @@ private fun TagConsumer<*>.imageNoteBlock(
                 }
             }
 
-            button(classes = "image-block-action") {
+            button(classes = "block-toolbar-action") {
                 hxDelete = "/notes/$noteId/blocks/${block.blockId}"
                 hxTarget = "#$blockContainerId"
                 hxSwap = "delete"
@@ -245,7 +249,6 @@ private fun TagConsumer<*>.imageNoteBlock(
 }
 
 private fun TagConsumer<*>.taskListItemBlock(
-    blockContainerId: String,
     noteId: Long,
     block: NoteBlock.TaskListItem,
     autoFocus: Boolean = false,
@@ -281,8 +284,52 @@ private fun TagConsumer<*>.taskListItemBlock(
     }
 }
 
+private fun TagConsumer<*>.codeNoteBlock(
+    noteId: Long,
+    block: NoteBlock.Code,
+    autoFocus: Boolean = false,
+) {
+    div {
+        classes = if (autoFocus) {
+            setOf("code-block", "is-editing")
+        } else {
+            setOf("code-block")
+        }
+        attributes["tabindex"] = "0"
+        attributes["aria-label"] = "Code block"
+        attributes["data-note-id"] = noteId.toString()
+        attributes["data-block-id"] = block.blockId.toString()
+        attributes["onkeydown"] = "handleCodeBlockKeyDown(event, this)"
+
+        div(classes = "block-toolbar") {
+            button(classes = "block-toolbar-action", type = ButtonType.button) {
+                attributes["onclick"] = "editCodeBlock(this.closest('.code-block'))"
+                +"Edit"
+            }
+        }
+
+        pre(classes = "code-block-preview") {
+            code { +block.text }
+        }
+        textArea(classes = "code-block-editor") {
+            id = "block-input-${block.blockId}"
+            name = "text"
+            rows = "3"
+            attributes["aria-label"] = "Code"
+            attributes["spellcheck"] = "false"
+            attributes["autocapitalize"] = "off"
+            attributes["autocomplete"] = "off"
+            hxPost = "/notes/$noteId/blocks/${block.blockId}/text"
+            hxTrigger = "input changed delay:1s, change"
+            hxSwap = "none"
+            attributes["oninput"] = "resizeTextBlock(this)"
+            attributes["onblur"] = "previewCodeBlock(this)"
+            +block.text
+        }
+    }
+}
+
 private fun TagConsumer<*>.textNoteBlock(
-    blockContainerId: String,
     noteId: Long,
     block: NoteBlock.Text,
     autoFocus: Boolean = false,

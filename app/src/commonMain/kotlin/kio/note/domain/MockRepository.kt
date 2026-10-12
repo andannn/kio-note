@@ -27,6 +27,14 @@ class MockRepositoryImpl : Repository {
                     blockId = 2,
                     checked = true,
                     "This is the second paragraph."
+                ),
+                NoteBlock.Code(
+                    blockId = 3,
+                    text = """
+                        fun main() {
+                            println("hello world")
+                        }
+                    """.trimIndent()
                 )
             ),
         )
@@ -102,6 +110,7 @@ class MockRepositoryImpl : Repository {
             BlockType.H3 -> NoteBlock.Text.H3(nextBlockId++, "")
             BlockType.H4 -> NoteBlock.Text.H4(nextBlockId++, "")
             BlockType.TASK_LIST_ITEM -> NoteBlock.TaskListItem(nextBlockId++, false, "")
+            BlockType.CODE -> NoteBlock.Code(nextBlockId++, "")
         }
 
         val note = getNoteById(noteId) ?: return null
@@ -179,6 +188,13 @@ class MockRepositoryImpl : Repository {
                     blockId = blockId,
                     text = textContent,
                     checked = extra == true
+                )
+            }
+
+            BlockType.CODE -> {
+                Code(
+                    blockId = blockId,
+                    text = textContent,
                 )
             }
         }

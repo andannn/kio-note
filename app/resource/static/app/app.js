@@ -64,12 +64,12 @@ function getBlockInput(block) {
     }
 
     return block.querySelector(
-        '.text-block, .image-block-content'
+        '.text-block, .image-block-content, .code-block'
     )
 }
 
 function focusBlock(block, cursorPosition = null) {
-    const input = getBlockInput(block)
+    let input = getBlockInput(block)
 
     if (!input) {
         return
@@ -257,6 +257,50 @@ function handleTextBlockKeyDown(event, input) {
     }
 }
 
+function handleCodeBlockKeyDown(event, input) {
+    const noteId = input.dataset.noteId
+    const blockId = input.dataset.blockId
+
+    const isEditing = input.classList.contains('is-editing')
+
+    if (isEditing && event.shiftKey && event.key === 'Enter' ||
+        !isEditing && event.key === 'Enter') {
+
+        event.preventDefault()
+        addTextBlockAfter(
+            input,
+            noteId,
+            blockId
+        )
+    }
+
+    if (!isEditing) {
+        if (event.key === 'ArrowUp') {
+            const currentBlock = getBlockContainer(input)
+
+            if (currentBlock?.previousElementSibling) {
+                event.preventDefault()
+                focusPreviousBlock(input)
+            }
+        } else if (event.key === 'ArrowDown') {
+            const currentBlock = getBlockContainer(input)
+
+            if (currentBlock?.nextElementSibling) {
+                event.preventDefault()
+                focusNextBlock(input)
+            }
+        } else if (event.key === 'Backspace') {
+            event.preventDefault()
+
+            deleteBlock(
+                input,
+                noteId,
+                blockId
+            )
+        }
+    }
+}
+
 function handleImageBlockKeyDown(event, input) {
     const noteId = input.dataset.noteId
     const blockId = input.dataset.blockId
@@ -280,20 +324,14 @@ function handleImageBlockKeyDown(event, input) {
             event.preventDefault()
             focusPreviousBlock(input)
         }
-
-        return
-    }
-
-    if (event.key === 'ArrowDown') {
+    } else if (event.key === 'ArrowDown') {
         const currentBlock = getBlockContainer(input)
 
         if (currentBlock?.nextElementSibling) {
             event.preventDefault()
             focusNextBlock(input)
         }
-    }
-
-    if (event.key === 'Backspace') {
+    } else if (event.key === 'Backspace') {
         event.preventDefault()
 
         deleteBlock(
@@ -332,7 +370,7 @@ function focusAutoFocusBlock(root = document) {
 
 function handleMarkdownBlockShortcut(textarea) {
     let value = textarea.value
-    let markdownMarks = ["####", "###", "##", "#", "[x]", "[ ]"]
+    let markdownMarks = ["####", "###", "##", "#", "[x]", "[ ]", "```"]
 
     const mark = markdownMarks.find(it => value.startsWith(it))
     if (!mark) return false
@@ -354,4 +392,30 @@ function handleMarkdownBlockShortcut(textarea) {
     )
 
     return true
+}
+
+function highlightCodeBlocks() {
+    document.querySelectorAll('pre code:not([data-highlighted])')
+        .forEach(element => hljs.highlightElement(element));
+}
+
+document.addEventListener('DOMContentLoaded', highlightCodeBlocks);
+document.addEventListener('htmx:afterSwap', highlightCodeBlocks);
+
+function editCodeBlock(block) {
+    if (block.classList.contains('is-editing')) return;
+    block.classList.add('is-editing');
+    const input = block.querySelector('.code-block-editor');
+    resizeTextBlock(input);
+    input.focus();
+}
+
+function previewCodeBlock(input) {
+    console.log("previewCodeBlock")
+    const block = input.closest('.code-block');
+    const code = block.querySelector('pre code');
+    code.removeAttribute('data-highlighted');
+    code.className = '';
+    block.classList.remove('is-editing');
+    if (window.hljs) hljs.highlightElement(code);
 }
