@@ -354,6 +354,7 @@ function resizeTextBlock(textarea) {
 }
 
 function resizeTextBlocks(root = document) {
+    root.querySelectorAll('textarea.text-block, textarea.note-title').forEach(resizeTextBlock)
     root.querySelectorAll('.text-block').forEach(resizeTextBlock)
 }
 
