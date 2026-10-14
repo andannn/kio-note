@@ -11,12 +11,13 @@ import kio.postgres.conn.PgConnectionPool
 import kio.postgres.conn.openPgConnection
 import kio.tls.pem
 import kio.tls.withServerTls
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.withContext
 import kotlin.uuid.Uuid
 
 private val DATA_SOURCE = DataSourceType.PRODUCTION
 
-suspend fun noteApp(serverSocket: ServerSocket) {
+suspend fun CoroutineScope.noteApp(serverSocket: ServerSocket) {
     val env = loadEnv()
 
     setupServer(dataSource = DATA_SOURCE, serverSocket, env) { repo ->
@@ -45,7 +46,7 @@ private enum class DataSourceType {
     PRODUCTION
 }
 
-private suspend fun setupServer(
+private suspend fun CoroutineScope.setupServer(
     dataSource: DataSourceType,
     serverSocket: ServerSocket, env: Env,
     block: suspend Route.(repo: Repository) -> Unit
