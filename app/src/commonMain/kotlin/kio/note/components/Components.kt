@@ -100,13 +100,15 @@ fun TagConsumer<*>.noteContent(note: Note, focusFirstBlock: Boolean) {
         }
 
         div(classes = "note-header") {
-            input(classes = "note-title") {
+            textArea (classes = "note-title") {
                 name = "title"
-                value = note.title
-
+                rows = "1"
                 hxPatch = "/notes/${note.id}/title"
                 hxTrigger = "input changed delay:500ms"
                 hxSwap = "none"
+                attributes["oninput"] = "resizeTextBlock(this)"
+
+                +note.title
             }
 
             a(
