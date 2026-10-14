@@ -231,6 +231,7 @@ function handleTextBlockKeyDown(event, input) {
     }
 
     if (
+        !event.isComposing &&
         event.key === 'ArrowUp' &&
         input.selectionStart === 0
     ) {
@@ -245,6 +246,7 @@ function handleTextBlockKeyDown(event, input) {
     }
 
     if (
+        !event.isComposing &&
         event.key === 'ArrowDown' &&
         input.selectionStart === input.value.length
     ) {
