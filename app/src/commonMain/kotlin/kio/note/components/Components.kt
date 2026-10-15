@@ -107,6 +107,8 @@ fun TagConsumer<*>.noteContent(note: Note, focusFirstBlock: Boolean) {
                 hxTrigger = "input changed delay:500ms"
                 hxSwap = "none"
                 attributes["oninput"] = "resizeTextBlock(this)"
+                attributes["onkeydown"] = "handleTitleKeyDown(event, this)"
+                attributes["data-note-id"] = note.id.toString()
 
                 +note.title
             }

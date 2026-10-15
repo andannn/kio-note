@@ -74,6 +74,22 @@ abstract class DatabaseTest {
     }
 
     @Test
+    fun insertNoteBlockAtBeginningTest() = withTestPgDatabase {
+        val note = createNoteForUser("new note", 1)
+        val first = createBlockAfter(note.id, "text", null)
+        val second = createBlockAfter(note.id, "text", null)
+        val third = createBlockAfter(note.id, "text", null)
+
+        assertEquals(1000L, first.sortOrder)
+        assertEquals(0L, second.sortOrder)
+        assertEquals(-1000L, third.sortOrder)
+        assertEquals(
+            listOf(third.id, second.id, first.id),
+            getNoteBlocksById(note.id).map { it.id }
+        )
+    }
+
+    @Test
     fun insertNoteBlockBetweenTest() = withTestPgDatabase {
         val note = createNoteForUser("new note", 1)
         val block1 = createBlockAfter(note.id, "text", null)
@@ -84,6 +100,25 @@ abstract class DatabaseTest {
         // insert block between 1 and 2
         val block3 = createBlockAfter(note.id, "text", block1.id)
         assertEquals(1500, block3.sortOrder)
+    }
+
+    @Test
+    fun insertNoteBlockReassignsExhaustedSortOrdersTest() = withTestPgDatabase {
+        val note = createNoteForUser("new note", 1)
+        val first = createBlockAfter(note.id, "text", null)
+        val last = createBlockAfter(note.id, "text", first.id)
+        val expectedIds = mutableListOf(first.id, last.id)
+        val otherNote = createNoteForUser("other note", 1)
+        val otherBlock = createBlockAfter(otherNote.id, "text", null)
+
+        repeat(20) {
+            val inserted = createBlockAfter(note.id, "text", first.id)
+            expectedIds.add(1, inserted.id)
+            val blocks = getNoteBlocksById(note.id)
+            assertEquals(expectedIds, blocks.map { it.id })
+            assertEquals(blocks.size, blocks.map { it.sortOrder }.distinct().size)
+        }
+        assertEquals(listOf(otherBlock), getNoteBlocksById(otherNote.id))
     }
 
     @Test

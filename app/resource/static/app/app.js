@@ -15,7 +15,7 @@ document.addEventListener('click', event => {
 
 document.addEventListener('paste', event => {
     const input = event.target.closest("textarea[data-note-id]");
-    if (!input || input.value.length != 0) return
+    if (!input || input.value.length !== 0) return
 
     const image = Array.from(event.clipboardData?.items ?? [])
         .find(item =>
@@ -159,6 +159,24 @@ function deleteBlock(element, noteId, blockId) {
     ).then(() => {
         focusBlock(previousBlock, 'end')
     })
+}
+
+function handleTitleKeyDown(event, input) {
+    if (event.key === 'Enter' && event.shiftKey) {
+        event.preventDefault()
+        console.log("event ", event)
+
+        const noteId = input.dataset.noteId
+
+        htmx.ajax(
+            "POST",
+            `/notes/${noteId}/blocks?type=text`,
+            {
+                target: `#note-blocks-${noteId}`,
+                swap: 'afterbegin',
+            }
+        )
+    }
 }
 
 function handleTextBlockKeyDown(event, input) {

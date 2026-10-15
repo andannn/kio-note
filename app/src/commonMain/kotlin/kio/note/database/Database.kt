@@ -103,17 +103,15 @@ suspend fun PgConnection.createNoteForUser(title: PgText, userId: Long): NotesEn
     return ret.firstOrNull() ?: error("note create failed")
 }
 
+/**
+ * add block to head if [afterBlockId] is null
+ */
 suspend fun PgConnection.createBlockAfter(
     noteId: Long,
     noteBlockType: String,
     afterBlockId: Long?
 ): NoteBlockEntity = transaction { t ->
-    val sortOrder = if (afterBlockId == null) {
-        // insert first block
-        1000L
-    } else {
-        t.findInsertSortOrder(noteId, afterBlockId)
-    }
+    val sortOrder = t.findInsertSortOrder(noteId, afterBlockId)
     val ret: Flow<NoteBlockEntity> = t.query(
         """
             insert into note_blocks(
@@ -316,11 +314,26 @@ private suspend fun TransactionScope.touchNote(noteId: Long) {
     }
 }
 
-private suspend fun TransactionScope.findInsertSortOrder(noteId: Long, afterBlockId: Long): Long {
+private suspend fun TransactionScope.findInsertSortOrder(noteId: Long, afterBlockId: Long?): Long {
     @Serializable
     data class Sort(
         @SerialName("sort_order") val value: PgInt8
     )
+
+    if (afterBlockId == null) {
+        val firstSortOrder = query<Sort>(
+            """
+            select sort_order from note_blocks
+            where note_id = $1
+            order by sort_order
+            limit 1
+            """.trimIndent()
+        ) {
+            param(noteId, PostgresInt8Serializer)
+        }.firstOrNull()
+
+        return firstSortOrder?.value?.minus(1000L) ?: 1000L
+    }
 
     val currentSortOrder: Sort = query<Sort>(
         """
@@ -345,11 +358,35 @@ private suspend fun TransactionScope.findInsertSortOrder(noteId: Long, afterBloc
         param(currentSortOrder.value, PostgresInt8Serializer)
     }
         .firstOrNull()
-    val nextOrder = if (nextSortOrder == null) {
-        currentSortOrder.value + 1000
-    } else {
-        (currentSortOrder.value + nextSortOrder.value) / 2
+
+    if (nextSortOrder == null) {
+        return currentSortOrder.value + 1000
     }
-    // TODO: re-assign all sort_order if calculated order equals to current/next sort_order
-    return nextOrder
+
+    // 1 2
+    val ret = (currentSortOrder.value + nextSortOrder.value) / 2
+    if (ret <= currentSortOrder.value || ret >= nextSortOrder.value) {
+        reassignSortOrders(noteId)
+        return findInsertSortOrder(noteId, afterBlockId)
+    }
+    return ret
+}
+
+private suspend fun TransactionScope.reassignSortOrders(noteId: Long) {
+    exec(
+        """
+        with ordered as (
+            select id,
+                   row_number() over (order by sort_order, id) * 1000 as new_order
+            from note_blocks
+            where note_id = $1
+        )
+        update note_blocks as b
+        set sort_order = ordered.new_order
+        from ordered
+        where b.id = ordered.id
+        """.trimIndent()
+    ) {
+        param(noteId, PostgresInt8Serializer)
+    }
 }
