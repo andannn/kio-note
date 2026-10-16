@@ -10,35 +10,47 @@ import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 
 class MockRepositoryImpl : Repository {
-    private val notes = mutableListOf(
-        Note(
-            id = 1,
-            title = "Learn HTML",
-            blocks = mutableListOf(
-                NoteBlock.Text.Content(
-                    blockId = 0,
-                    "Today I learned HTML components."
-                ),
-                NoteBlock.Text.Content(
-                    blockId = 1,
-                    "This is the second paragraph."
-                ),
-                NoteBlock.TaskListItem(
-                    blockId = 2,
-                    checked = true,
-                    "This is the second paragraph."
-                ),
-                NoteBlock.Code(
-                    blockId = 3,
-                    text = """
+    private val blocks = mutableListOf(
+        NoteBlock.Text.Content(
+            blockId = 0,
+            "Today I learned HTML components."
+        ),
+        NoteBlock.Text.Content(
+            blockId = 1,
+            "This is the second paragraph."
+        ),
+        NoteBlock.TaskListItem(
+            blockId = 2,
+            checked = true,
+            "This is the second paragraph."
+        ),
+        NoteBlock.Code(
+            blockId = 3,
+            text = """
                         fun main() {
                             println("hello world")
                         }
                     """.trimIndent()
-                )
-            ),
         )
     )
+
+    private val notes = mutableListOf<Note>(
+        Note(
+            id = 1,
+            title = "Learn HTML",
+            blocks = blocks,
+        )
+    )
+
+    private val folders = mutableListOf(
+        NoteFolder(
+            id = 1,
+            name = "Test Name",
+            notes = notes.toMutableList()
+        )
+    )
+
+    private var folderId = 2L
 
     private var nextNoteId = 3L
     private var nextBlockId = notes.first().blocks.size.toLong()
@@ -71,13 +83,7 @@ class MockRepositoryImpl : Repository {
     }
 
     override suspend fun getAllNoteFolder(userId: Long): List<NoteFolder> {
-        return listOf(
-            NoteFolder(
-                id = 1,
-                name = "Test Name",
-                notes = notes
-            )
-        )
+        return folders.toList()
     }
 
     override suspend fun getAllNoteMetaData(userId: Long): List<Note> {
@@ -292,6 +298,30 @@ class MockRepositoryImpl : Repository {
         note.blocks.removeAt(noteBlockIndex)
         note.blocks.add(noteBlockIndex, newBlock)
         return newBlock
+    }
+
+    override suspend fun getNoteFolderById(folderId: Long): NoteFolder? {
+        return folders.firstOrNull { it.id == folderId }
+    }
+
+    override suspend fun newFolder(): NoteFolder {
+        val folder = NoteFolder(folderId++, "New Folder", emptyList())
+        folders.add(0, folder)
+        return folder
+    }
+
+    override suspend fun changeFolderName(
+        folderId: Long,
+        name: String
+    ): NoteFolder {
+        return folders.first { it.id == folderId }.copy(name = name)
+    }
+
+    override suspend fun removeNoteFromFolder(folderId: Long, deleteNoteId: Long) {
+        val index = folders.indexOfFirst { it.id == folderId }
+        if (index == -1) return
+        val folder = folders[index]
+        folders[index] = folder.copy(notes = folder.notes.filterNot { it.id == deleteNoteId })
     }
 
     private fun NoteBlock.Text.copyText(content: String): NoteBlock.Text = when (this) {

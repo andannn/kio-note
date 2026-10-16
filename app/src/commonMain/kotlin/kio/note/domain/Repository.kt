@@ -141,6 +141,12 @@ interface Repository {
     suspend fun saveImageAndChangeBlockTypeToImage(noteId: Long, noteBlockId: Long, fileSource: AsyncRawSource): NoteBlock.Image?
     suspend fun saveTextToTextBlock(noteId: Long, noteBlockId: Long, content: String): NoteBlock.Text?
     suspend fun saveCheckedToTaskListItemBlock(noteId: Long, noteBlockId: Long, checked: Boolean): NoteBlock.TaskListItem?
+
+    // folder
+    suspend fun getNoteFolderById(folderId: Long): NoteFolder?
+    suspend fun newFolder(): NoteFolder
+    suspend fun changeFolderName(folderId: Long, name: String): NoteFolder
+    suspend fun removeNoteFromFolder(folderId: Long, deleteNoteId: Long)
 }
 
 private class RepositoryImpl(
@@ -293,6 +299,25 @@ private class RepositoryImpl(
 
         return pgPool.useConnection { it.saveCheckedToBlock(noteId, noteBlockId, checked) }
             ?.toNoteBlock() as? NoteBlock.TaskListItem
+    }
+
+    override suspend fun getNoteFolderById(folderId: Long): NoteFolder? {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun newFolder(): NoteFolder {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun changeFolderName(
+        folderId: Long,
+        name: String
+    ): NoteFolder {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun removeNoteFromFolder(folderId: Long, deleteNoteId: Long) {
+        TODO("Not yet implemented")
     }
 }
 

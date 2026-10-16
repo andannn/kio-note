@@ -49,6 +49,11 @@ fun TagConsumer<*>.noteAsideMenu(selectedNoteId: Long? = null) {
             val nodeFolderId = "folder_items"
             hxTarget = "#$nodeFolderId"
 
+            div(classes = "section-header") {
+                h2(classes = "section-title") { +"Folders" }
+                folderSectionOptionsMenu()
+            }
+
             ul {
                 id = nodeFolderId
             }
@@ -60,6 +65,7 @@ fun TagConsumer<*>.noteAsideMenu(selectedNoteId: Long? = null) {
             hxTarget = "#$noteListId"
             hxSwap = "innerHTML"
 
+            h2(classes = "section-title") { +"Recent" }
             ul {
                 id = noteListId
             }
@@ -69,22 +75,52 @@ fun TagConsumer<*>.noteAsideMenu(selectedNoteId: Long? = null) {
 
 fun TagConsumer<*>.noteFolders(folders: List<NoteFolder>) {
     folders.forEach { folder ->
-        li(classes = "note-folder") {
-            details(classes = "note-folder-details") {
-                summary(classes = "note-folder-summary") {
-                    span(classes = "note-folder-name") { +folder.name }
-                    span(classes = "note-folder-count") { +folder.notes.size.toString() }
-                }
+        ul {
+            id = "note-folder-list"
+            folderItem(folder)
+        }
+    }
+}
 
-                ul(classes = "note-folder-notes") {
-                    if (folder.notes.isEmpty()) {
-                        li(classes = "note-folder-empty") { +"No notes" }
-                    } else {
-                        folder.notes.forEach { note -> noteItem(note, isInFolder = true) }
+fun TagConsumer<*>.folderNameEditor(folder: NoteFolder) {
+    li(classes = "note-folder note-folder-editing") {
+        textInput(classes = "note-folder-name-input") {
+            name = "name"
+            value = folder.name
+            attributes["aria-label"] = "Folder name"
+            attributes["data-autofocus"] = "true"
+
+            hxPost = "/notes/folders/${folder.id}/name-commit"
+            hxTrigger = "keydown[key=='Enter' && !isComposing], blur changed"
+            hxTarget = "closest .note-folder"
+            hxSwap = "outerHTML"
+            attributes["hx-sync"] = "this:drop"
+        }
+    }
+}
+
+fun TagConsumer<*>.folderItem(folder: NoteFolder, expanded: Boolean = false) {
+    li(classes = "note-folder") {
+        details(classes = "note-folder-details") {
+            if (expanded) attributes["open"] = ""
+            summary(classes = "note-folder-summary") {
+                span(classes = "note-folder-name") { +folder.name }
+            }
+
+            ul(classes = "note-folder-notes") {
+                if (folder.notes.isEmpty()) {
+                    li(classes = "note-folder-empty") { +"No notes" }
+                } else {
+                    folder.notes.forEach { note ->
+                        noteItem(
+                            note = note,
+                            folder = folder,
+                        )
                     }
                 }
             }
         }
+        folderItemOptionsMenu(folderId = folder.id)
     }
 }
 
@@ -94,7 +130,11 @@ fun TagConsumer<*>.noteList(notes: List<Note>, selectedNoteId: String?) {
     }
 }
 
-fun TagConsumer<*>.noteItem(note: Note, selected: Boolean = false, isInFolder: Boolean = false) {
+fun TagConsumer<*>.noteItem(
+    note: Note,
+    selected: Boolean = false,
+    folder: NoteFolder? = null,
+) {
     li(classes = "note-item") {
         val noteId = "note-${note.id}"
         id = noteId
@@ -115,7 +155,7 @@ fun TagConsumer<*>.noteItem(note: Note, selected: Boolean = false, isInFolder: B
             +note.title
         }
 
-        noteItemOptionsMenu(note.id, isInFolder)
+        noteItemOptionsMenu(note.id, folder)
     }
 }
 
@@ -405,7 +445,46 @@ private val blockTypes = listOf(
     "task_list_item",
 )
 
-private fun TagConsumer<*>.noteItemOptionsMenu(noteId: Long, isInFolder: Boolean) {
+private fun TagConsumer<*>.folderSectionOptionsMenu() {
+    details(classes = "menu folder-section-menu") {
+        summary(classes = "menu-trigger") {
+            attributes["aria-label"] = "Folder section options"
+            +"⋯"
+        }
+
+        div(classes = "menu-popup") {
+            button(classes = "menu-item") {
+                hxPost = "/notes/folders"
+                hxTarget = "#note-folder-list"
+                hxSwap = "afterbegin"
+                attributes["onclick"] = "closeMenu(this)"
+
+                +"New Folder"
+            }
+        }
+    }
+}
+
+private fun TagConsumer<*>.folderItemOptionsMenu(folderId: Long) {
+    details(classes = "menu folder-item-menu") {
+        summary(classes = "menu-trigger") {
+            attributes["aria-label"] = "Folder options"
+            +"⋯"
+        }
+
+        div(classes = "menu-popup") {
+            button(classes = "menu-item") {
+                hxPost = "/notes/folders/$folderId/name-editing"
+                hxTarget = "closest .note-folder"
+                hxSwap = "outerHTML"
+                attributes["onclick"] = "closeMenu(this)"
+                +"Edit Name"
+            }
+        }
+    }
+}
+
+private fun TagConsumer<*>.noteItemOptionsMenu(noteId: Long, folder: NoteFolder?) {
     details(classes = "menu note-item-menu") {
         summary(classes = "menu-trigger") {
             attributes["aria-label"] = "Note options"
@@ -428,10 +507,22 @@ private fun TagConsumer<*>.noteItemOptionsMenu(noteId: Long, isInFolder: Boolean
 
                 +"Delete"
             }
-            if (isInFolder) {
+            button(classes = "menu-item") {
+                +"Move to Folder"
+            }
+
+            if (folder != null) {
                 hr {}
+
+                h2(classes = "section-title") { +folder.name }
+
                 button(classes = "menu-item") {
-                    +"Delete from folder"
+                    attributes["onclick"] = "closeMenu(this)"
+                    hxDelete = "/notes/folders/${folder.id}/remove_note?note_id=${noteId}"
+                    hxTarget = "closest .note-folder"
+                    hxSwap = "outerHTML"
+
+                    +"Remove from folder"
                 }
             }
         }

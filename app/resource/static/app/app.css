@@ -122,6 +122,41 @@ hr {
     background: var(--hover-bg);
 }
 
+.section-title {
+    margin: 20px 0 6px;
+    padding: 0 10px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.5;
+    letter-spacing: 0.04em;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 28px;
+    margin: 20px 0 6px;
+    padding-right: 5px;
+}
+
+.section-header > .section-title {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+}
+
+.folder-section-menu {
+    flex: 0 0 28px;
+}
+
+.section-header:hover > .folder-section-menu,
+.section-header:focus-within > .folder-section-menu {
+    opacity: 1;
+    pointer-events: auto;
+}
+
 .sidebar-notes ul,
 .sidebar-folders ul {
     margin: 0;
@@ -135,6 +170,10 @@ hr {
     margin: 12px 0;
 }
 
+.note-folder {
+    position: relative;
+}
+
 .note-folder + .note-folder {
     margin-top: 3px;
 }
@@ -144,7 +183,7 @@ hr {
     align-items: center;
     gap: 8px;
     min-height: 38px;
-    padding: 8px 10px;
+    padding: 8px 42px 8px 10px;
     border-radius: var(--radius-md);
     color: var(--text-secondary);
     font-size: 14px;
@@ -188,14 +227,6 @@ hr {
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-}
-
-.note-folder-count {
-    flex-shrink: 0;
-    color: var(--text-muted);
-    font-size: 12px;
-    font-weight: 400;
-    font-variant-numeric: tabular-nums;
 }
 
 .sidebar-folders .note-folder-notes {
@@ -601,17 +632,37 @@ hr {
     outline-offset: 2px;
 }
 
-.note-item-menu > .menu-popup {
+.note-item-menu > .menu-popup,
+.folder-item-menu > .menu-popup,
+.folder-section-menu > .menu-popup {
     left: auto;
     right: 0;
     width: 180px;
 }
 
 @media (hover: none) {
-    .note-item-menu {
+    .note-item-menu,
+    .folder-item-menu,
+    .folder-section-menu {
         opacity: 1;
         pointer-events: auto;
     }
+}
+
+.folder-item-menu {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+}
+
+.note-folder:hover > .folder-item-menu,
+.note-folder:focus-within > .folder-item-menu {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.note-folder-details[open] > .note-folder-summary {
+    color: var(--text-primary);
 }
 
 /* Image block */
@@ -913,3 +964,24 @@ hr {
 
 
 .code-block.is-editing > .block-toolbar { display: none; }
+
+.note-folder-editing {
+    padding: 4px 10px;
+}
+
+.note-folder-name-input {
+    width: 100%;
+    min-width: 0;
+    padding: 6px 8px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 14px;
+}
+
+.note-folder-name-input:focus {
+    outline: 1px solid var(--text-secondary);
+    outline-offset: 1px;
+}
