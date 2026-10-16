@@ -76,6 +76,13 @@ body {
     background: var(--bg-primary);
 }
 
+hr {
+    height: 0;
+    margin: 6px 0;
+    border: 0;
+    border-top: 1px solid var(--border-strong);
+}
+
 /* Sidebar */
 
 .sidebar-header {
@@ -308,29 +315,6 @@ body {
     min-width: 0;
 }
 
-.note-export {
-    flex-shrink: 0;
-    margin-top: 8px;
-    padding: 6px 12px;
-    border: 1px solid var(--border-strong);
-    border-radius: 6px;
-    color: var(--text-secondary);
-    font-size: 14px;
-    line-height: 1.5;
-    white-space: nowrap;
-    text-decoration: none;
-}
-
-.note-export:hover {
-    background: var(--hover-bg);
-    color: var(--text-primary);
-}
-
-.note-export:focus-visible {
-    outline: 2px solid var(--text-secondary);
-    outline-offset: 3px;
-}
-
 .note-title {
     display: block;
     width: 100%;
@@ -485,12 +469,10 @@ body {
     opacity: 0.55;
 }
 
-/* Block menu */
+/* Shared menu */
 
-.block-menu {
-    position: absolute;
-    top: 2px;
-    left: -36px;
+.menu {
+    position: relative;
 
     z-index: 10;
 
@@ -500,13 +482,25 @@ body {
     transition: opacity 120ms ease;
 }
 
-.note-block:focus-within .block-menu,
-.block-menu[open] {
+.menu[open] {
+    z-index: 30;
     opacity: 1;
     pointer-events: auto;
 }
 
-.block-menu-trigger {
+/* Block menu positioning and visibility */
+.block-menu {
+    position: absolute;
+    top: 2px;
+    left: -36px;
+}
+
+.note-block:focus-within .block-menu {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.menu-trigger {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -530,16 +524,16 @@ body {
         color 120ms ease;
 }
 
-.block-menu-trigger:hover {
+.menu-trigger:hover {
     background: rgba(255, 255, 255, 0.07);
     color: var(--text-secondary);
 }
 
-.block-menu-trigger::marker {
+.menu-trigger::marker {
     content: "";
 }
 
-.block-menu-popup {
+.menu-popup {
     position: absolute;
     top: 32px;
     left: 0;
@@ -559,7 +553,7 @@ body {
         0 2px 8px rgba(0, 0, 0, 0.26);
 }
 
-.block-menu-item {
+.menu-item {
     display: flex;
     align-items: center;
 
@@ -577,10 +571,47 @@ body {
 
     text-align: left;
     cursor: pointer;
+
+    text-decoration: none;
 }
 
-.block-menu-item:hover {
+.menu-item:hover {
     background: var(--bg-surface-hover);
+}
+
+/* Sidebar note menu: keep the trigger in the row, unlike block menus. */
+
+.note-item-menu {
+    flex: 0 0 28px;
+    margin-right: 5px;
+}
+
+.note-item:hover > .note-item-menu,
+.note-item:focus-within > .note-item-menu {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.menu-trigger::-webkit-details-marker {
+    display: none;
+}
+
+.menu-trigger:focus-visible {
+    outline: 2px solid var(--text-secondary);
+    outline-offset: 2px;
+}
+
+.note-item-menu > .menu-popup {
+    left: auto;
+    right: 0;
+    width: 180px;
+}
+
+@media (hover: none) {
+    .note-item-menu {
+        opacity: 1;
+        pointer-events: auto;
+    }
 }
 
 /* Image block */

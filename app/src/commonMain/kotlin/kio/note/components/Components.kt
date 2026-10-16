@@ -41,6 +41,8 @@ fun TagConsumer<*>.noteAsideMenu(selectedNoteId: Long? = null) {
             }
         }
 
+        hr {}
+
         section(classes = "sidebar-folders") {
             hxGet = "/notes/folders"
             hxTrigger = "load"
@@ -137,13 +139,6 @@ fun TagConsumer<*>.noteContent(note: Note, focusFirstBlock: Boolean) {
                 attributes["data-note-id"] = note.id.toString()
 
                 +note.title
-            }
-
-            a(
-                href = "/notes/${note.id}/export",
-                classes = "note-export"
-            ) {
-                +"Export"
             }
         }
 
@@ -411,26 +406,31 @@ private val blockTypes = listOf(
 )
 
 private fun TagConsumer<*>.noteItemOptionsMenu(noteId: Long, isInFolder: Boolean) {
-    details(classes = "block-menu") {
-        summary(classes = "block-menu-trigger") {
+    details(classes = "menu note-item-menu") {
+        summary(classes = "menu-trigger") {
             attributes["aria-label"] = "Note options"
-            +"+"
+            +"⋯"
         }
 
-        div(classes = "block-menu-popup") {
-            button(classes = "block-menu-item") {
+        div(classes = "menu-popup") {
+            a(
+                href = "/notes/$noteId/export",
+                classes = "menu-item"
+            ) {
+                attributes["onclick"] = "closeMenu(this)"
                 +"Export"
             }
-            button(classes = "block-menu-item") {
+            button(classes = "menu-item") {
                 hxDelete = "/notes/${noteId}"
                 hxSwap = "delete"
-                hxTarget = "#$noteId"
+                hxTarget = "closest .note-item"
                 hxInclude = "#current-note-id"
 
                 +"Delete"
             }
             if (isInFolder) {
-                button(classes = "block-menu-item") {
+                hr {}
+                button(classes = "menu-item") {
                     +"Delete from folder"
                 }
             }
@@ -443,20 +443,20 @@ private fun TagConsumer<*>.addBlockMenu(
     noteId: Long,
     blockId: Long
 ) {
-    details(classes = "block-menu") {
-        summary(classes = "block-menu-trigger") {
+    details(classes = "menu block-menu") {
+        summary(classes = "menu-trigger") {
             attributes["aria-label"] = "Add block"
             +"+"
         }
 
-        div(classes = "block-menu-popup") {
+        div(classes = "menu-popup") {
             blockTypes.forEach { item ->
-                button(classes = "block-menu-item") {
+                button(classes = "menu-item") {
                     hxPost = "/notes/$noteId/blocks/$blockId/after?type=$item"
 
                     hxTarget = "#$blockContainerId"
                     hxSwap = "afterend"
-                    attributes["onclick"] = "closeBlockMenu(this)"
+                    attributes["onclick"] = "closeMenu(this)"
 
                     when (item) {
                         "h1" -> +"H1"

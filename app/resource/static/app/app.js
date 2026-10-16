@@ -4,11 +4,11 @@ document.addEventListener('htmx:afterSwap', event => {
 })
 
 document.addEventListener('click', event => {
-    if (event.target.closest('.block-menu')) {
+    if (event.target.closest('.menu')) {
         return
     }
 
-    document.querySelectorAll('.block-menu[open]').forEach(menu => {
+    document.querySelectorAll('.menu[open]').forEach(menu => {
         menu.removeAttribute('open')
     })
 })
@@ -362,8 +362,8 @@ function handleImageBlockKeyDown(event, input) {
     }
 }
 
-function closeBlockMenu(element) {
-    element.closest('details')?.removeAttribute('open')
+function closeMenu(element) {
+    element.closest('.menu')?.removeAttribute('open')
 }
 
 function resizeTextBlock(textarea) {
