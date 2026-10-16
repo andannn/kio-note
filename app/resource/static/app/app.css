@@ -64,7 +64,7 @@ body {
     padding: 16px 10px;
 
     border-right: 1px solid var(--border-color);
-    background: var(--sidebar-bg);
+    background: var(--bg-secondary);
 }
 
 .note-editor {
@@ -145,16 +145,6 @@ hr {
     flex: 1;
     min-width: 0;
     margin: 0;
-}
-
-.folder-section-menu {
-    flex: 0 0 28px;
-}
-
-.section-header:hover > .folder-section-menu,
-.section-header:focus-within > .folder-section-menu {
-    opacity: 1;
-    pointer-events: auto;
 }
 
 .sidebar-notes ul,
@@ -245,6 +235,31 @@ hr {
     font-size: 13px;
 }
 
+.note-folder-details[open] > .note-folder-summary {
+    color: var(--text-primary);
+}
+
+.note-folder-editing {
+    padding: 4px 10px;
+}
+
+.note-folder-name-input {
+    width: 100%;
+    min-width: 0;
+    padding: 6px 8px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 14px;
+}
+
+.note-folder-name-input:focus {
+    outline: 1px solid var(--text-secondary);
+    outline-offset: 1px;
+}
+
 /* Note item */
 
 .note-item {
@@ -285,44 +300,6 @@ hr {
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-}
-
-.note-item-delete {
-    flex: 0 0 28px;
-
-    width: 28px;
-    height: 28px;
-    margin-right: 5px;
-    padding: 0;
-
-    border: 0;
-    border-radius: var(--radius-sm);
-
-    background: transparent;
-    color: var(--text-muted);
-
-    font-size: 20px;
-    line-height: 28px;
-
-    opacity: 0;
-    pointer-events: none;
-
-    cursor: pointer;
-
-    transition:
-        opacity 120ms ease,
-        background-color 120ms ease,
-        color 120ms ease;
-}
-
-.note-item:hover .note-item-delete {
-    opacity: 1;
-    pointer-events: auto;
-}
-
-.note-item-delete:hover {
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--text-primary);
 }
 
 /* Document */
@@ -519,18 +496,6 @@ hr {
     pointer-events: auto;
 }
 
-/* Block menu positioning and visibility */
-.block-menu {
-    position: absolute;
-    top: 2px;
-    left: -36px;
-}
-
-.note-block:focus-within .block-menu {
-    opacity: 1;
-    pointer-events: auto;
-}
-
 .menu-trigger {
     display: flex;
     align-items: center;
@@ -562,6 +527,15 @@ hr {
 
 .menu-trigger::marker {
     content: "";
+}
+
+.menu-trigger::-webkit-details-marker {
+    display: none;
+}
+
+.menu-trigger:focus-visible {
+    outline: 2px solid var(--text-secondary);
+    outline-offset: 2px;
 }
 
 .menu-popup {
@@ -610,26 +584,38 @@ hr {
     background: var(--bg-surface-hover);
 }
 
-/* Sidebar note menu: keep the trigger in the row, unlike block menus. */
+/* Menu placement and visibility */
 
-.note-item-menu {
-    flex: 0 0 28px;
-    margin-right: 5px;
+.block-menu {
+    position: absolute;
+    top: 2px;
+    left: -36px;
 }
 
+.folder-section-menu {
+    flex: 0 0 28px;
+}
+
+.folder-item-menu {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+}
+
+.note-block:focus-within .block-menu,
+.section-header:hover > .folder-section-menu,
+.section-header:focus-within > .folder-section-menu,
 .note-item:hover > .note-item-menu,
-.note-item:focus-within > .note-item-menu {
+.note-item:focus-within > .note-item-menu,
+.note-folder:hover > .folder-item-menu,
+.note-folder:focus-within > .folder-item-menu {
     opacity: 1;
     pointer-events: auto;
 }
 
-.menu-trigger::-webkit-details-marker {
-    display: none;
-}
-
-.menu-trigger:focus-visible {
-    outline: 2px solid var(--text-secondary);
-    outline-offset: 2px;
+.note-item-menu {
+    flex: 0 0 28px;
+    margin-right: 5px;
 }
 
 .note-item-menu > .menu-popup,
@@ -647,22 +633,6 @@ hr {
         opacity: 1;
         pointer-events: auto;
     }
-}
-
-.folder-item-menu {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-}
-
-.note-folder:hover > .folder-item-menu,
-.note-folder:focus-within > .folder-item-menu {
-    opacity: 1;
-    pointer-events: auto;
-}
-
-.note-folder-details[open] > .note-folder-summary {
-    color: var(--text-primary);
 }
 
 /* Image block */
@@ -726,7 +696,54 @@ hr {
     border-radius: 8px;
 }
 
-/* Actions */
+/* Code block */
+
+.code-block {
+    position: relative;
+    margin: 12px 0;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #0d1117;
+}
+
+.code-block-preview {
+    margin: 0;
+    min-height: 64px;
+    cursor: text;
+    overflow-x: auto;
+}
+
+.code-block-editor {
+    display: none;
+    width: 100%;
+    min-height: 96px;
+    padding: 16px;
+    border: 0;
+    outline: 0;
+    resize: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    tab-size: 4;
+}
+
+.code-block.is-editing .code-block-preview {
+    display: none;
+}
+.code-block.is-editing .code-block-editor {
+    display: block;
+}
+.code-block:focus-within {
+    outline: 1px solid var(--border-strong);
+}
+
+.code-block.is-editing > .block-toolbar {
+    display: none;
+}
+
+/* Shared block toolbar */
 
 .block-toolbar {
     position: absolute;
@@ -788,7 +805,7 @@ hr {
     outline-offset: 2px;
 }
 
-/* Login */
+/* Login and registration */
 .app.login-body {
     display: block;
     height: auto;
@@ -864,16 +881,6 @@ hr {
     outline-offset: 2px;
 }
 
-#login-result:empty {
-    display: none;
-}
-
-#login-result {
-    color: #fca5a5;
-    font-size: 14px;
-    overflow-wrap: anywhere;
-}
-
 .login-submit {
     width: 100%;
     padding: 12px 16px;
@@ -901,10 +908,12 @@ hr {
     }
 }
 
+#login-result:empty,
 .register-result:empty {
     display: none;
 }
 
+#login-result,
 .register-result {
     color: #fca5a5;
     font-size: 14px;
@@ -925,63 +934,4 @@ hr {
 
 .auth-footer a:hover {
     color: #a5b4fc;
-}
-
-.code-block {
-    position: relative;
-    margin: 12px 0;
-    border-radius: 6px;
-    overflow: hidden;
-    background: #0d1117;
-}
-
-.code-block-preview {
-    margin: 0;
-    min-height: 64px;
-    cursor: text;
-    overflow-x: auto;
-}
-
-.code-block-editor {
-    display: none;
-    width: 100%;
-    min-height: 96px;
-    padding: 16px;
-    border: 0;
-    outline: 0;
-    resize: none;
-    background: transparent;
-    color: var(--text-primary);
-    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-    font-size: 14px;
-    line-height: 1.6;
-    tab-size: 4;
-}
-
-.code-block.is-editing .code-block-preview { display: none; }
-.code-block.is-editing .code-block-editor { display: block; }
-.code-block:focus-within { outline: 1px solid var(--border-strong); }
-
-
-.code-block.is-editing > .block-toolbar { display: none; }
-
-.note-folder-editing {
-    padding: 4px 10px;
-}
-
-.note-folder-name-input {
-    width: 100%;
-    min-width: 0;
-    padding: 6px 8px;
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius-sm);
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    font: inherit;
-    font-size: 14px;
-}
-
-.note-folder-name-input:focus {
-    outline: 1px solid var(--text-secondary);
-    outline-offset: 1px;
 }
