@@ -19,6 +19,7 @@ import kio.http.respondWithSink
 import kio.http.route
 import kio.note.components.noteBlock
 import kio.note.components.noteContent
+import kio.note.components.noteFolders
 import kio.note.components.noteItem
 import kio.note.components.noteList
 import kio.note.components.noteMainContentEmpty
@@ -42,8 +43,12 @@ fun Route.notesRoute() {
     route("/notes") {
         post { call -> call.handleNewNote() }
 
-        route("list") {
+        route("recent") {
             get { call -> call.handleGetNoteList() }
+        }
+
+        route("folders") {
+            get { call -> call.handleGetNoteFolders() }
         }
 
         route("/{id}") {
@@ -97,6 +102,14 @@ private data class CoroutineNoteId(
     companion object Key : CoroutineContext.Key<CoroutineNoteId>
 
     override fun toString(): String = "CoroutineNoteId(${noteId})"
+}
+
+context(repo: Repository)
+private suspend fun CallContext.handleGetNoteFolders() {
+    val noteFolder = repo.getAllNoteFolder(requireSession().userId)
+    respondHtml {
+        noteFolders(noteFolder)
+    }
 }
 
 context(repo: Repository)

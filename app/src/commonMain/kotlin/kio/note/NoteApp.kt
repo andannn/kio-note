@@ -15,7 +15,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.withContext
 import kotlin.uuid.Uuid
 
-private val DATA_SOURCE = DataSourceType.PRODUCTION
+private val DATA_SOURCE = DataSourceType.MOCK
 
 suspend fun CoroutineScope.noteApp(serverSocket: ServerSocket) {
     val env = loadEnv()

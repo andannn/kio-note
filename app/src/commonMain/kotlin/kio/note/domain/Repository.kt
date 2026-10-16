@@ -73,6 +73,12 @@ data class User(
 
 data class Session(val userId: Long)
 
+data class NoteFolder(
+    val id: Long,
+    val name: String,
+    val notes: List<Note>,
+)
+
 data class Note(
     val id: Long,
     val title: String,
@@ -122,6 +128,7 @@ interface Repository {
 
     // note
     suspend fun createNewNoteForUser(userId: Long): Note
+    suspend fun getAllNoteFolder(userId: Long): List<NoteFolder>
     suspend fun getAllNoteMetaData(userId: Long): List<Note>
     suspend fun getNoteById(id: Long): Note?
     suspend fun getNoteBlocksFlow(id: Long): Flow<NoteBlock>
@@ -172,6 +179,10 @@ private class RepositoryImpl(
 
     override suspend fun createNewNoteForUser(userId: Long): Note {
         return pgPool.useConnection { it.createNoteForUser("Untitled", userId) }.toNote()
+    }
+
+    override suspend fun getAllNoteFolder(userId: Long): List<NoteFolder> {
+        TODO("Not yet implemented")
     }
 
     override suspend fun getAllNoteMetaData(userId: Long): List<Note> {

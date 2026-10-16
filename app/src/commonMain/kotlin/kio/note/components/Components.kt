@@ -2,6 +2,7 @@ package kio.note.components
 
 import kio.note.domain.Note
 import kio.note.domain.NoteBlock
+import kio.note.domain.NoteFolder
 import kio.note.util.hxDelete
 import kio.note.util.hxGet
 import kio.note.util.hxInclude
@@ -40,14 +41,46 @@ fun TagConsumer<*>.noteAsideMenu(selectedNoteId: Long? = null) {
             }
         }
 
+        section(classes = "sidebar-folders") {
+            hxGet = "/notes/folders"
+            hxTrigger = "load"
+            val nodeFolderId = "folder_items"
+            hxTarget = "#$nodeFolderId"
+
+            ul {
+                id = nodeFolderId
+            }
+        }
+
         section(classes = "sidebar-notes") {
-            hxGet = "/notes/list?selectedNoteId=${selectedNoteId?.toString().orEmpty()}"
+            hxGet = "/notes/recent?selectedNoteId=${selectedNoteId?.toString().orEmpty()}"
             hxTrigger = "load"
             hxTarget = "#$noteListId"
             hxSwap = "innerHTML"
 
             ul {
                 id = noteListId
+            }
+        }
+    }
+}
+
+fun TagConsumer<*>.noteFolders(folders: List<NoteFolder>) {
+    folders.forEach { folder ->
+        li(classes = "note-folder") {
+            details(classes = "note-folder-details") {
+                summary(classes = "note-folder-summary") {
+                    span(classes = "note-folder-name") { +folder.name }
+                    span(classes = "note-folder-count") { +folder.notes.size.toString() }
+                }
+
+                ul(classes = "note-folder-notes") {
+                    if (folder.notes.isEmpty()) {
+                        li(classes = "note-folder-empty") { +"No notes" }
+                    } else {
+                        folder.notes.forEach { note -> noteItem(note) }
+                    }
+                }
             }
         }
     }

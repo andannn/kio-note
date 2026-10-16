@@ -70,6 +70,16 @@ class MockRepositoryImpl : Repository {
         return newNote
     }
 
+    override suspend fun getAllNoteFolder(userId: Long): List<NoteFolder> {
+        return listOf(
+            NoteFolder(
+                id = 1,
+                name = "Test Name",
+                notes = notes
+            )
+        )
+    }
+
     override suspend fun getAllNoteMetaData(userId: Long): List<Note> {
         return notes
     }
