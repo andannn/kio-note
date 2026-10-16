@@ -78,7 +78,7 @@ fun TagConsumer<*>.noteFolders(folders: List<NoteFolder>) {
                     if (folder.notes.isEmpty()) {
                         li(classes = "note-folder-empty") { +"No notes" }
                     } else {
-                        folder.notes.forEach { note -> noteItem(note) }
+                        folder.notes.forEach { note -> noteItem(note, isInFolder = true) }
                     }
                 }
             }
@@ -92,7 +92,7 @@ fun TagConsumer<*>.noteList(notes: List<Note>, selectedNoteId: String?) {
     }
 }
 
-fun TagConsumer<*>.noteItem(note: Note, selected: Boolean = false) {
+fun TagConsumer<*>.noteItem(note: Note, selected: Boolean = false, isInFolder: Boolean = false) {
     li(classes = "note-item") {
         val noteId = "note-${note.id}"
         id = noteId
@@ -113,14 +113,7 @@ fun TagConsumer<*>.noteItem(note: Note, selected: Boolean = false) {
             +note.title
         }
 
-        button(classes = "note-item-delete") {
-            hxDelete = "/notes/${note.id}"
-            hxSwap = "delete"
-            hxTarget = "#$noteId"
-            hxInclude = "#current-note-id"
-
-            +"×"
-        }
+        noteItemOptionsMenu(note.id, isInFolder)
     }
 }
 
@@ -133,7 +126,7 @@ fun TagConsumer<*>.noteContent(note: Note, focusFirstBlock: Boolean) {
         }
 
         div(classes = "note-header") {
-            textArea (classes = "note-title") {
+            textArea(classes = "note-title") {
                 name = "title"
                 rows = "1"
                 hxPatch = "/notes/${note.id}/title"
@@ -416,6 +409,34 @@ private val blockTypes = listOf(
     "image",
     "task_list_item",
 )
+
+private fun TagConsumer<*>.noteItemOptionsMenu(noteId: Long, isInFolder: Boolean) {
+    details(classes = "block-menu") {
+        summary(classes = "block-menu-trigger") {
+            attributes["aria-label"] = "Note options"
+            +"+"
+        }
+
+        div(classes = "block-menu-popup") {
+            button(classes = "block-menu-item") {
+                +"Export"
+            }
+            button(classes = "block-menu-item") {
+                hxDelete = "/notes/${noteId}"
+                hxSwap = "delete"
+                hxTarget = "#$noteId"
+                hxInclude = "#current-note-id"
+
+                +"Delete"
+            }
+            if (isInFolder) {
+                button(classes = "block-menu-item") {
+                    +"Delete from folder"
+                }
+            }
+        }
+    }
+}
 
 private fun TagConsumer<*>.addBlockMenu(
     blockContainerId: String,
