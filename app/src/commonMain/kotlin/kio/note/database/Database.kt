@@ -359,7 +359,7 @@ suspend fun PgConnection.getAllNoteFolder(
             on notes.note_folder_id = note_folders.id
         where note_folders.user_id = $1
         $excludeClause
-        order by note_folders.id, notes.id
+        order by note_folders.create_at desc
     """.trimIndent()) {
         param(userId, PostgresInt8Serializer)
         excludedFolderIds.forEach {

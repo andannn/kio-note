@@ -89,6 +89,7 @@ fun TagConsumer<*>.folderNameEditor(folder: NoteFolder) {
             value = folder.name
             attributes["aria-label"] = "Folder name"
             attributes["data-autofocus"] = "true"
+            attributes["onfocus"] = "this.select(); this.removeAttribute('onfocus')"
 
             hxPost = "/notes/folders/${folder.id}/name-commit"
             hxTrigger = "keydown[key=='Enter' && !isComposing], blur changed"
