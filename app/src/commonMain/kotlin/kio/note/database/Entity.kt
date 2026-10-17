@@ -48,6 +48,8 @@ data class NotesEntity(
     val updateAt: PgTimestampTz,
     @SerialName("user_id")
     val userId: PgInt8,
+    @SerialName("note_folder_id")
+    val folderId: PgInt8?,
 )
 
 @Serializable
@@ -68,6 +70,18 @@ data class NoteSessionEntity(
     val id: PgText,
     @SerialName("user_id")
     val userId: PgText,
+    @SerialName("create_at")
+    val createAt: PgTimestampTz,
+)
+
+@Serializable
+data class NoteFolderEntity(
+    @SerialName("id")
+    val id: PgInt8,
+    @SerialName("user_id")
+    val userId: PgText,
+    @SerialName("folder_name")
+    val name: PgText,
     @SerialName("create_at")
     val createAt: PgTimestampTz,
 )

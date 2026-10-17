@@ -11,10 +11,13 @@ import kio.postgres.types.PostgresBoolSerializer
 import kio.postgres.types.PostgresInt8Serializer
 import kio.postgres.types.PostgresTextSerializer
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.toCollection
+import kotlinx.coroutines.flow.toList
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.nullable
 
 suspend fun PgConnection.createUser(userName: String, passwordHash: String): NoteUserEntity? {
     val ret: Flow<NoteUserEntity> = query(
@@ -94,7 +97,7 @@ suspend fun PgConnection.createNoteForUser(title: PgText, userId: Long): NotesEn
         """
             insert into notes(title, user_id)
             values ($1, $2)
-            returning id, title, create_at, update_at, user_id
+            returning id, title, create_at, update_at, user_id, note_folder_id
         """.trimIndent()
     ) {
         param(title, PostgresTextSerializer)
@@ -167,7 +170,7 @@ suspend fun PgConnection.changeNoteTitle(noteId: PgInt8, title: PgText): NotesEn
         update notes
         set title = $2, update_at = now()
         where id = $1
-        returning id, title, create_at, update_at, user_id
+        returning id, title, create_at, update_at, user_id, note_folder_id
         """.trimIndent()
     ) {
         param(noteId, PostgresInt8Serializer)
@@ -305,6 +308,154 @@ suspend fun PgConnection.updateNoteBlock(
     ret.firstOrNull()
 }
 
+suspend fun PgConnection.changeNoteFolder(noteId: Long, folderId: Long?): NotesEntity? {
+    val ret: Flow<NotesEntity> = query("""
+        update notes
+        set
+            note_folder_id = $1
+        where id = $2
+        returning id, title, create_at, update_at, user_id, note_folder_id 
+    """.trimIndent()) {
+        param(folderId, PostgresInt8Serializer.nullable)
+        param(noteId, PostgresInt8Serializer)
+    }
+
+    return ret.firstOrNull()
+}
+
+suspend fun PgConnection.deleteNoteFolder(folderId: Long): NoteFolderEntity? {
+    val ret: Flow<NoteFolderEntity> = query("""
+        delete from note_folders
+        where id = $1
+       returning id, user_id, folder_name, create_at
+    """.trimIndent()) {
+        param(folderId, PostgresInt8Serializer)
+    }
+
+    return ret.firstOrNull()
+}
+
+suspend fun PgConnection.getAllNoteFolder(
+    userId: Long,
+    excludedFolderIds: List<Long>,
+): List<NoteWithFolderEntity> {
+    val excludeClause = if (excludedFolderIds.isEmpty()) {
+        ""
+    } else {
+        val placeholders = excludedFolderIds.indices.joinToString(", ") {
+            $$"$$${it + 2}"
+        }
+        "and note_folders.id not in ($placeholders)"
+    }
+
+    val ret: Flow<NoteWithFolderEntity> = query("""
+        select
+            note_folders.id as folder_id,
+            note_folders.folder_name as folder_name,
+            notes.id,
+            notes.title
+        from note_folders
+        left join notes
+            on notes.note_folder_id = note_folders.id
+        where note_folders.user_id = $1
+        $excludeClause
+        order by note_folders.create_at desc
+    """.trimIndent()) {
+        param(userId, PostgresInt8Serializer)
+        excludedFolderIds.forEach {
+            param(it, PostgresInt8Serializer)
+        }
+    }
+
+    return ret.toList()
+}
+
+suspend fun PgConnection.changeNoteFolderName(folderId: Long, folderName: String): List<NoteWithFolderEntity> {
+    return transaction { t ->
+        t.exec("""
+            update note_folders
+            set
+                folder_name = $1
+            where id = $2
+            returning id, user_id, folder_name, create_at
+        """.trimIndent()) {
+            param(folderName, PostgresTextSerializer)
+            param(folderId, PostgresInt8Serializer)
+        }
+
+        t.getNoteFolderById(folderId)
+    }
+}
+
+@Serializable
+data class NoteWithFolderEntity(
+    @SerialName("folder_id")
+    val folderId: PgInt8,
+    @SerialName("folder_name")
+    val folderName: PgText,
+    @SerialName("id")
+    val noteId: PgInt8?,
+    @SerialName("title")
+    val noteTitle: PgText?,
+)
+
+suspend fun PgConnection.getNoteFolderById(folderId: Long): List<NoteWithFolderEntity> {
+    return transaction { t ->
+        t.getNoteFolderById(folderId)
+    }
+}
+
+private suspend fun TransactionScope.getNoteFolderById(folderId: Long): List<NoteWithFolderEntity> {
+    val ret: Flow<NoteWithFolderEntity> = query("""
+        select 
+            note_folders.id as folder_id,
+            note_folders.folder_name as folder_name,
+            notes.id,
+            notes.title
+        from note_folders
+        left join notes
+            on notes.note_folder_id = note_folders.id
+        where note_folders.id = $1
+    """.trimIndent()) {
+        param(folderId, PostgresInt8Serializer)
+    }
+
+    return ret.toList()
+}
+
+suspend fun PgConnection.getNoteFolderByNoteId(noteId: Long): List<NoteWithFolderEntity> {
+    val ret: Flow<NoteWithFolderEntity> = query("""
+        select 
+            note_folders.id as folder_id,
+            note_folders.folder_name as folder_name,
+            notes.id,
+            notes.title
+        from note_folders
+        left join notes
+            on notes.note_folder_id = note_folders.id
+        where notes.id = $1
+    """.trimIndent()) {
+        param(noteId, PostgresInt8Serializer)
+    }
+
+    return ret.toList()
+}
+
+suspend fun PgConnection.createNewNoteFolder(userId: Long, folderName: String): NoteFolderEntity {
+    val ret: Flow<NoteFolderEntity> = query("""
+        insert into note_folders(
+            user_id,
+            folder_name
+        )
+        values ($1, $2)
+        returning id, user_id, folder_name, create_at
+    """.trimIndent()) {
+        param(userId, PostgresInt8Serializer)
+        param(folderName, PostgresTextSerializer)
+    }
+
+    return ret.first()
+}
 
 private suspend fun TransactionScope.touchNote(noteId: Long) {
     exec("""

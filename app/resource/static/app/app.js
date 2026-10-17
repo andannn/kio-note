@@ -4,14 +4,19 @@ document.addEventListener('htmx:afterSwap', event => {
 })
 
 document.addEventListener('click', event => {
-    if (event.target.closest('.block-menu')) {
+    if (event.target.closest('.menu')) {
         return
     }
 
-    document.querySelectorAll('.block-menu[open]').forEach(menu => {
-        menu.removeAttribute('open')
-    })
+    document.querySelectorAll('.menu[open]').forEach(closeMenu)
 })
+
+// Also reset submenus when the native details trigger closes the menu.
+document.addEventListener('toggle', event => {
+    if (event.target.matches('.menu') && !event.target.open) {
+        closeMenu(event.target)
+    }
+}, true)
 
 document.addEventListener('paste', event => {
     const input = event.target.closest("textarea[data-note-id]");
@@ -362,8 +367,14 @@ function handleImageBlockKeyDown(event, input) {
     }
 }
 
-function closeBlockMenu(element) {
-    element.closest('details')?.removeAttribute('open')
+function closeMenu(element) {
+    const menu = element.closest('.menu')
+    if (!menu) return
+
+    menu.querySelectorAll('.menu-submenu[open]').forEach(submenu => {
+        submenu.removeAttribute('open')
+    })
+    menu.removeAttribute('open')
 }
 
 function resizeTextBlock(textarea) {

@@ -5,20 +5,29 @@ import kio.http.currentLogger
 import kio.http.info
 import kio.http.trace
 import kio.note.database.NoteBlockEntity
+import kio.note.database.NoteFolderEntity
 import kio.note.database.NoteUserEntity
+import kio.note.database.NoteWithFolderEntity
 import kio.note.database.NotesEntity
+import kio.note.database.changeNoteFolder
+import kio.note.database.changeNoteFolderName
 import kio.note.database.changeNoteTitle
 import kio.note.database.createBlockAfter
+import kio.note.database.createNewNoteFolder
 import kio.note.database.createNoteForUser
 import kio.note.database.createSession
 import kio.note.database.createUser
 import kio.note.database.deleteBlockById
 import kio.note.database.deleteNoteById
+import kio.note.database.deleteNoteFolder
 import kio.note.database.getAllNote
+import kio.note.database.getAllNoteFolder
 import kio.note.database.getNoteBlocksById
 import kio.note.database.getNoteBlocksByNoteBlockId
 import kio.note.database.getNoteBlocksFlow
 import kio.note.database.getNoteById
+import kio.note.database.getNoteFolderById
+import kio.note.database.getNoteFolderByNoteId
 import kio.note.database.getUserByUsername
 import kio.note.database.getUserIdBySessionId
 import kio.note.database.saveCheckedToBlock
@@ -31,6 +40,7 @@ import kio.note.util.hashPassword
 import kio.note.util.removeFile
 import kio.note.util.saveFileToPath
 import kio.postgres.conn.PgConnectionPool
+import kio.postgres.conn.transaction
 import kio.postgres.conn.useConnection
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -72,6 +82,12 @@ data class User(
 )
 
 data class Session(val userId: Long)
+
+data class NoteFolder(
+    val id: Long,
+    val name: String,
+    val notes: List<Note>,
+)
 
 data class Note(
     val id: Long,
@@ -122,8 +138,10 @@ interface Repository {
 
     // note
     suspend fun createNewNoteForUser(userId: Long): Note
+    suspend fun getAllNoteFolder(userId: Long, excludedFolderIds: List<Long> = emptyList()): List<NoteFolder>
     suspend fun getAllNoteMetaData(userId: Long): List<Note>
     suspend fun getNoteById(id: Long): Note?
+    suspend fun getNoteFolderByNoteId(noteId: Long): NoteFolder?
     suspend fun getNoteBlocksFlow(id: Long): Flow<NoteBlock>
     suspend fun changeNoteTitleById(id: Long, title: String): Note?
     suspend fun deleteNoteById(id: Long)
@@ -134,6 +152,13 @@ interface Repository {
     suspend fun saveImageAndChangeBlockTypeToImage(noteId: Long, noteBlockId: Long, fileSource: AsyncRawSource): NoteBlock.Image?
     suspend fun saveTextToTextBlock(noteId: Long, noteBlockId: Long, content: String): NoteBlock.Text?
     suspend fun saveCheckedToTaskListItemBlock(noteId: Long, noteBlockId: Long, checked: Boolean): NoteBlock.TaskListItem?
+
+    // folder
+    suspend fun getNoteFolderById(folderId: Long): NoteFolder?
+    suspend fun newFolder(userId: Long, folderName: String): NoteFolder
+    suspend fun changeFolderName(folderId: Long, name: String): NoteFolder?
+    suspend fun deleteNoteFolder(folderId: Long): NoteFolder?
+    suspend fun changeNoteFolder(noteId: Long, folderId: Long?): Note?
 }
 
 private class RepositoryImpl(
@@ -174,6 +199,12 @@ private class RepositoryImpl(
         return pgPool.useConnection { it.createNoteForUser("Untitled", userId) }.toNote()
     }
 
+    override suspend fun getAllNoteFolder(userId: Long, excludedFolderIds: List<Long>): List<NoteFolder> {
+        return pgPool.useConnection {
+            noteWithFolderToFolderModels(it.getAllNoteFolder(userId, excludedFolderIds))
+        }
+    }
+
     override suspend fun getAllNoteMetaData(userId: Long): List<Note> {
         return pgPool.useConnection { it.getAllNote(userId) }.map { it.toNote() }
     }
@@ -182,6 +213,12 @@ private class RepositoryImpl(
         val noteBlocks = pgPool.useConnection { it.getNoteBlocksById(id) }.map { it.toNoteBlock() }
         val note = pgPool.useConnection { it.getNoteById(id) }?.toNote()
         return note?.copy(blocks = noteBlocks.toMutableList())
+    }
+
+    override suspend fun getNoteFolderByNoteId(noteId: Long): NoteFolder? {
+        return pgPool.useConnection {
+            noteWithFolderToFolderModels(it.getNoteFolderByNoteId(noteId)).firstOrNull()
+        }
     }
 
     override suspend fun getNoteBlocksFlow(id: Long): Flow<NoteBlock> {
@@ -283,10 +320,49 @@ private class RepositoryImpl(
         return pgPool.useConnection { it.saveCheckedToBlock(noteId, noteBlockId, checked) }
             ?.toNoteBlock() as? NoteBlock.TaskListItem
     }
+
+    override suspend fun getNoteFolderById(folderId: Long): NoteFolder? {
+        return pgPool.useConnection {
+            noteWithFolderToFolderModels(it.getNoteFolderById(folderId)).firstOrNull()
+        }
+    }
+
+    override suspend fun newFolder(userId: Long, folderName: String): NoteFolder {
+        return pgPool.useConnection { it.createNewNoteFolder(userId, folderName) }.toFolder()
+    }
+
+    override suspend fun changeFolderName(folderId: Long, name: String): NoteFolder? {
+        return pgPool.useConnection {
+            noteWithFolderToFolderModels(it.changeNoteFolderName(folderId, name)).firstOrNull()
+        }
+    }
+
+    override suspend fun deleteNoteFolder(folderId: Long): NoteFolder? {
+        return pgPool.useConnection { it.deleteNoteFolder(folderId)?.toFolder() }
+    }
+
+    override suspend fun changeNoteFolder(noteId: Long, folderId: Long?): Note? {
+        return pgPool.useConnection { it.changeNoteFolder(noteId, folderId)?.toNote() }
+    }
 }
 
 private fun NoteUserEntity.toUser(): User = User(id = id, username = username, passwordHash = passwordHash)
 private fun NotesEntity.toNote(): Note = Note(id = id, title = title)
+private fun NoteFolderEntity.toFolder(notes: List<Note> = emptyList()): NoteFolder = NoteFolder(id = id, name = name, notes = notes)
+private fun noteWithFolderToFolderModels(
+    rows: List<NoteWithFolderEntity>,
+): List<NoteFolder> =
+    rows.groupBy { it.folderId }.map { (folderId, items) ->
+        NoteFolder(
+            id = folderId,
+            name = items.first().folderName,
+            notes = items.mapNotNull { item ->
+                val noteId = item.noteId ?: return@mapNotNull null
+                val title = item.noteTitle ?: return@mapNotNull null
+                Note(id = noteId, title = title)
+            },
+        )
+    }
 
 private fun NoteBlockEntity.toNoteBlock(): NoteBlock = when (type) {
     NoteBlockEntity.BLOCK_TYPE_H1 -> NoteBlock.Text.H1(blockId = id, textContent ?: "")

@@ -2,6 +2,7 @@ package kio.note.components
 
 import kio.note.domain.Note
 import kio.note.domain.NoteBlock
+import kio.note.domain.NoteFolder
 import kio.note.util.hxDelete
 import kio.note.util.hxGet
 import kio.note.util.hxInclude
@@ -40,16 +41,84 @@ fun TagConsumer<*>.noteAsideMenu(selectedNoteId: Long? = null) {
             }
         }
 
+        hr {}
+
+        section(classes = "sidebar-folders") {
+            hxGet = "/notes/folders"
+            hxTrigger = "load"
+            val nodeFolderId = "folder_items"
+            hxTarget = "#$nodeFolderId"
+
+            div(classes = "section-header") {
+                h2(classes = "section-title") { +"Folders" }
+                folderSectionOptionsMenu()
+            }
+
+            ul {
+                id = nodeFolderId
+            }
+        }
+
         section(classes = "sidebar-notes") {
-            hxGet = "/notes/list?selectedNoteId=${selectedNoteId?.toString().orEmpty()}"
+            hxGet = "/notes/recent?selectedNoteId=${selectedNoteId?.toString().orEmpty()}"
             hxTrigger = "load"
             hxTarget = "#$noteListId"
             hxSwap = "innerHTML"
 
+            h2(classes = "section-title") { +"Recent" }
             ul {
                 id = noteListId
             }
         }
+    }
+}
+
+fun TagConsumer<*>.noteFolders(
+    folders: List<NoteFolder>,
+    expandedFolderId: Long? = null,
+) {
+    folders.forEach { folder ->
+        folderItem(folder, expanded = folder.id == expandedFolderId)
+    }
+}
+
+fun TagConsumer<*>.folderNameEditor(folder: NoteFolder) {
+    li(classes = "note-folder note-folder-editing") {
+        textInput(classes = "note-folder-name-input") {
+            name = "name"
+            value = folder.name
+            attributes["aria-label"] = "Folder name"
+            attributes["data-autofocus"] = "true"
+            attributes["onfocus"] = "this.select(); this.removeAttribute('onfocus')"
+
+            hxPost = "/notes/folders/${folder.id}/name-commit"
+            hxTrigger = "keydown[key=='Enter' && !isComposing], blur changed"
+            hxTarget = "closest .note-folder"
+            hxSwap = "outerHTML"
+            attributes["hx-sync"] = "this:drop"
+        }
+    }
+}
+
+fun TagConsumer<*>.folderItem(folder: NoteFolder, expanded: Boolean = false) {
+    li(classes = "note-folder") {
+        details(classes = "note-folder-details") {
+            if (expanded) attributes["open"] = ""
+            summary(classes = "note-folder-summary") {
+                span(classes = "note-folder-name") { +folder.name }
+            }
+
+            ul(classes = "note-folder-notes") {
+                if (folder.notes.isEmpty()) {
+                    li(classes = "note-folder-empty") { +"No notes" }
+                } else {
+                    folder.notes.forEach { note ->
+                        noteItem(note = note, folder = folder)
+                    }
+                }
+            }
+        }
+        folderItemOptionsMenu(folderId = folder.id)
     }
 }
 
@@ -59,7 +128,11 @@ fun TagConsumer<*>.noteList(notes: List<Note>, selectedNoteId: String?) {
     }
 }
 
-fun TagConsumer<*>.noteItem(note: Note, selected: Boolean = false) {
+fun TagConsumer<*>.noteItem(
+    note: Note,
+    selected: Boolean = false,
+    folder: NoteFolder? = null,
+) {
     li(classes = "note-item") {
         val noteId = "note-${note.id}"
         id = noteId
@@ -80,14 +153,7 @@ fun TagConsumer<*>.noteItem(note: Note, selected: Boolean = false) {
             +note.title
         }
 
-        button(classes = "note-item-delete") {
-            hxDelete = "/notes/${note.id}"
-            hxSwap = "delete"
-            hxTarget = "#$noteId"
-            hxInclude = "#current-note-id"
-
-            +"×"
-        }
+        noteItemOptionsMenu(note.id, folder)
     }
 }
 
@@ -100,7 +166,7 @@ fun TagConsumer<*>.noteContent(note: Note, focusFirstBlock: Boolean) {
         }
 
         div(classes = "note-header") {
-            textArea (classes = "note-title") {
+            textArea(classes = "note-title") {
                 name = "title"
                 rows = "1"
                 hxPatch = "/notes/${note.id}/title"
@@ -111,13 +177,6 @@ fun TagConsumer<*>.noteContent(note: Note, focusFirstBlock: Boolean) {
                 attributes["data-note-id"] = note.id.toString()
 
                 +note.title
-            }
-
-            a(
-                href = "/notes/${note.id}/export",
-                classes = "note-export"
-            ) {
-                +"Export"
             }
         }
 
@@ -384,25 +443,141 @@ private val blockTypes = listOf(
     "task_list_item",
 )
 
+private fun TagConsumer<*>.folderSectionOptionsMenu() {
+    details(classes = "menu folder-section-menu") {
+        summary(classes = "menu-trigger") {
+            attributes["aria-label"] = "Folder section options"
+            +"⋯"
+        }
+
+        div(classes = "menu-popup") {
+            button(classes = "menu-item") {
+                hxPost = "/notes/folders"
+                hxTarget = "#folder_items"
+                hxSwap = "afterbegin"
+                attributes["onclick"] = "closeMenu(this)"
+
+                +"New Folder"
+            }
+        }
+    }
+}
+
+private fun TagConsumer<*>.folderItemOptionsMenu(folderId: Long) {
+    details(classes = "menu folder-item-menu") {
+        summary(classes = "menu-trigger") {
+            attributes["aria-label"] = "Folder options"
+            +"⋯"
+        }
+
+        div(classes = "menu-popup") {
+            button(classes = "menu-item") {
+                hxPost = "/notes/folders/$folderId/name-editing"
+                hxTarget = "closest .note-folder"
+                hxSwap = "outerHTML"
+                attributes["onclick"] = "closeMenu(this)"
+                +"Edit Name"
+            }
+
+            button(classes = "menu-item") {
+                attributes["onclick"] = "closeMenu(this)"
+
+                +"Export"
+            }
+
+            hr {}
+
+            button(classes = "menu-item") {
+                attributes["onclick"] = "closeMenu(this)"
+                hxDelete = "/notes/folders/${folderId}"
+                hxTarget = "closest .note-folder"
+                hxSwap = "delete"
+                +"Delete"
+            }
+        }
+    }
+}
+
+private fun TagConsumer<*>.noteItemOptionsMenu(noteId: Long, folder: NoteFolder?) {
+    details(classes = "menu note-item-menu") {
+        summary(classes = "menu-trigger") {
+            attributes["aria-label"] = "Note options"
+            +"⋯"
+        }
+
+        div(classes = "menu-popup") {
+            a(
+                href = "/notes/$noteId/export",
+                classes = "menu-item"
+            ) {
+                attributes["onclick"] = "closeMenu(this)"
+                +"Export"
+            }
+            button(classes = "menu-item") {
+                hxDelete = "/notes/${noteId}"
+                hxSwap = "delete"
+                hxTarget = "closest .note-item"
+                hxInclude = "#current-note-id"
+
+                +"Delete"
+            }
+
+            hr {}
+
+            details(classes = "menu-submenu") {
+                summary(classes = "menu-item menu-submenu-trigger") {
+                    hxGet = "/notes/$noteId/target_folder_list"
+                    hxTrigger = "click"
+                    hxTarget = "next .menu-submenu-content"
+                    hxSwap = "innerHTML"
+                    +"Add to Folder ›"
+                }
+                div(classes = "menu-submenu-content") {
+                    p(classes = "menu-empty") { +"Loading folders…" }
+                }
+                hr {}
+                button(classes = "menu-item", type = ButtonType.button) {
+                    attributes["onclick"] = "this.closest('.menu-submenu').removeAttribute('open')"
+                    +"‹ Back"
+                }
+            }
+
+            if (folder != null) {
+
+                h2(classes = "section-title") { +folder.name }
+
+                button(classes = "menu-item") {
+                    attributes["onclick"] = "closeMenu(this)"
+                    hxPost = "/notes/${noteId}/change_folder?folderId=null"
+                    hxTarget = "closest .note-folder"
+                    hxSwap = "outerHTML"
+
+                    +"Remove from folder"
+                }
+            }
+        }
+    }
+}
+
 private fun TagConsumer<*>.addBlockMenu(
     blockContainerId: String,
     noteId: Long,
     blockId: Long
 ) {
-    details(classes = "block-menu") {
-        summary(classes = "block-menu-trigger") {
+    details(classes = "menu block-menu") {
+        summary(classes = "menu-trigger") {
             attributes["aria-label"] = "Add block"
             +"+"
         }
 
-        div(classes = "block-menu-popup") {
+        div(classes = "menu-popup") {
             blockTypes.forEach { item ->
-                button(classes = "block-menu-item") {
+                button(classes = "menu-item") {
                     hxPost = "/notes/$noteId/blocks/$blockId/after?type=$item"
 
                     hxTarget = "#$blockContainerId"
                     hxSwap = "afterend"
-                    attributes["onclick"] = "closeBlockMenu(this)"
+                    attributes["onclick"] = "closeMenu(this)"
 
                     when (item) {
                         "h1" -> +"H1"
@@ -414,6 +589,24 @@ private fun TagConsumer<*>.addBlockMenu(
                         "task_list_item" -> +"TODO List"
                     }
                 }
+            }
+        }
+    }
+}
+
+fun TagConsumer<*>.moveTargetFolderList(noteId: Long, folders: List<NoteFolder>) {
+    if (folders.isEmpty()) {
+        p(classes = "menu-empty") { +"No available folders" }
+    } else {
+        folders.forEach { folder ->
+            button(classes = "menu-item", type = ButtonType.button) {
+                attributes["data-folder-id"] = folder.id.toString()
+                hxPost = "/notes/${noteId}/change_folder?folderId=${folder.id}"
+                hxSwap = "none"
+                attributes["hx-sync"] = "closest .menu:drop"
+                attributes["onclick"] = "closeMenu(this)"
+
+                +folder.name
             }
         }
     }
