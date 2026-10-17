@@ -10,51 +10,55 @@ import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 
 class MockRepositoryImpl : Repository {
-    private val blocks = mutableListOf(
-        NoteBlock.Text.Content(
-            blockId = 0,
-            "Today I learned HTML components."
-        ),
-        NoteBlock.Text.Content(
-            blockId = 1,
-            "This is the second paragraph."
-        ),
-        NoteBlock.TaskListItem(
-            blockId = 2,
-            checked = true,
-            "This is the second paragraph."
-        ),
-        NoteBlock.Code(
-            blockId = 3,
-            text = """
-                        fun main() {
-                            println("hello world")
-                        }
-                    """.trimIndent()
-        )
+    // Mutable storage is private; callers receive detached domain snapshots.
+    private data class MockNote(
+        val id: Long,
+        var title: String,
+        val blocks: MutableList<NoteBlock> = mutableListOf(),
     )
 
-    private val notes = mutableListOf<Note>(
-        Note(
-            id = 1,
-            title = "Learn HTML",
-            blocks = blocks,
-        )
+    private data class MockFolder(
+        val id: Long,
+        var name: String,
+        val noteIds: MutableList<Long> = mutableListOf(),
     )
 
+    private val notes = mutableListOf(
+        MockNote(1, "Learn HTML", mutableListOf(
+            Content(0, "Today I learned HTML components."),
+            Content(1, "This is the second paragraph."),
+            TaskListItem(2, true, "This is the second paragraph."),
+            Code(3, """
+                fun main() {
+                    println("hello world")
+                }
+            """.trimIndent()),
+        )),
+    )
     private val folders = mutableListOf(
-        NoteFolder(
-            id = 1,
-            name = "Test Name",
-            notes = notes.toMutableList()
-        )
+        MockFolder(1, "Test Name", mutableListOf(1L)),
     )
 
-    private var folderId = 2L
+    private var nextNoteId = (notes.maxOfOrNull { it.id } ?: 0L) + 1
+    private var nextBlockId = (notes.flatMap { it.blocks }.maxOfOrNull { it.blockId } ?: 0L) + 1
+    private var nextFolderId = (folders.maxOfOrNull { it.id } ?: 0L) + 1
 
-    private var nextNoteId = 3L
-    private var nextBlockId = notes.first().blocks.size.toLong()
+    private fun findNote(id: Long) = notes.firstOrNull { it.id == id }
 
+    private fun MockNote.snapshot(): Note = Note(
+        id = id,
+        title = title,
+        blocks = blocks.toMutableList(),
+    )
+
+    private fun MockFolder.snapshot(): NoteFolder = NoteFolder(
+        id = id,
+        name = name,
+        // Avoid a cyclic Note -> NoteFolder -> Note object graph.
+        notes = noteIds.mapNotNull { findNote(it)?.snapshot() },
+    )
+
+    // Development authentication stubs; not intended for authentication tests.
     override suspend fun findUserByUsername(userName: String): User? {
         return User(1, "Test", "has")
     }
@@ -68,7 +72,6 @@ class MockRepositoryImpl : Repository {
     }
 
     override suspend fun getSessionById(sessionId: String): Session? {
-//        return null
         return Session(1)
     }
 
@@ -77,33 +80,57 @@ class MockRepositoryImpl : Repository {
     }
 
     override suspend fun createNewNoteForUser(userId: Long): Note {
-        val newNote = Note(nextNoteId++, title = "Untitled")
+        val newNote = MockNote(nextNoteId++, title = "Untitled")
         notes.add(0, newNote)
-        return newNote
+        return newNote.snapshot()
     }
 
-    override suspend fun getAllNoteFolder(userId: Long): List<NoteFolder> {
-        return folders.toList()
+    override suspend fun getAllNoteFolder(userId: Long, excludedFolderIds: List<Long>): List<NoteFolder> {
+        return folders.filter { it.id !in excludedFolderIds }.map { it.snapshot() }
     }
 
     override suspend fun getAllNoteMetaData(userId: Long): List<Note> {
-        return notes
+        return notes.map { it.snapshot() }
     }
 
     override suspend fun getNoteById(id: Long): Note? {
-        return notes.firstOrNull { it.id == id }
+        return findNote(id)?.snapshot()
+    }
+
+    override suspend fun getNoteFolderByNoteId(noteId: Long): NoteFolder? {
+        return folders.firstOrNull { it.noteIds.any { it == noteId} }?.snapshot()
     }
 
     override suspend fun getNoteBlocksFlow(id: Long): Flow<NoteBlock> {
         return flow {
-            val notes = notes.firstOrNull { it.id == id }?.blocks?.toList()?: listOf<NoteBlock>()
-            notes.forEach { emit(it) }
+            findNote(id)?.blocks?.toList().orEmpty().forEach { emit(it) }
         }
     }
 
     override suspend fun changeNoteTitleById(id: Long, title: String): Note? {
-        val note = getNoteById(id) ?: return null
-        return note.copy(title = title)
+        val note = findNote(id) ?: return null
+        note.title = title
+        return note.snapshot()
+    }
+
+    override suspend fun changeNoteFolder(
+        noteId: Long,
+        folderId: Long?
+    ): Note? {
+        val note = findNote(noteId) ?: return null
+
+        val targetFolder = if (folderId == null) {
+            null
+        } else {
+            folders.firstOrNull { it.id == folderId } ?: return null
+        }
+
+        folders.forEach { folder ->
+            folder.noteIds.removeAll { it == noteId }
+        }
+        targetFolder?.noteIds?.add(noteId)
+
+        return note.snapshot()
     }
 
     override suspend fun deleteNoteById(id: Long) {
@@ -111,6 +138,7 @@ class MockRepositoryImpl : Repository {
         if (index == -1) return
 
         notes.removeAt(index)
+        folders.forEach { it.noteIds.removeAll { noteId -> noteId == id } }
     }
 
     override suspend fun addBlockAfter(
@@ -118,29 +146,14 @@ class MockRepositoryImpl : Repository {
         blockId: Long?,
         type: BlockType
     ): NoteBlock? {
-        val newBlock = when (type) {
-            BlockType.IMAGE -> NoteBlock.Image(nextBlockId++, url = null)
-            BlockType.TEXT -> NoteBlock.Text.Content(nextBlockId++, "")
-            BlockType.H1 -> NoteBlock.Text.H1(nextBlockId++, "")
-            BlockType.H2 -> NoteBlock.Text.H2(nextBlockId++, "")
-            BlockType.H3 -> NoteBlock.Text.H3(nextBlockId++, "")
-            BlockType.H4 -> NoteBlock.Text.H4(nextBlockId++, "")
-            BlockType.TASK_LIST_ITEM -> NoteBlock.TaskListItem(nextBlockId++, false, "")
-            BlockType.CODE -> NoteBlock.Code(nextBlockId++, "")
+        val note = findNote(noteId) ?: return null
+        val index = if (blockId == null) 0 else {
+            val previous = note.blocks.indexOfFirst { it.blockId == blockId }
+            if (previous == -1) return null
+            previous + 1
         }
-
-        val note = getNoteById(noteId) ?: return null
-
-        if (blockId == null) {
-            note.blocks.add(0, newBlock)
-            return newBlock
-        }
-
-        val blockIndex = note.blocks.indexOfFirst { it.blockId == blockId }
-
-        if (blockIndex == -1) return null
-
-        note.blocks.add(blockIndex + 1, newBlock)
+        val newBlock = createBlock(nextBlockId++, type, "", null)
+        note.blocks.add(index, newBlock)
         return newBlock
     }
 
@@ -151,76 +164,19 @@ class MockRepositoryImpl : Repository {
         textContent: String,
         extra: Any?
     ): NoteBlock? {
-        val note = getNoteById(noteId) ?: return null
+        val note = findNote(noteId) ?: return null
 
         val blockIndex = note.blocks.indexOfFirst { it.blockId == blockId }
         if (blockIndex == -1) return null
 
-        val newBlock = when (type) {
-            BlockType.IMAGE -> {
-                Image(
-                    blockId = blockId,
-                    url = null,
-                )
-            }
-
-            BlockType.TEXT -> {
-                Content(
-                    blockId = blockId,
-                    text = textContent,
-                )
-            }
-
-            BlockType.H1 -> {
-                H1(
-                    blockId = blockId,
-                    text = textContent,
-                )
-            }
-
-            BlockType.H2 -> {
-                H2(
-                    blockId = blockId,
-                    text = textContent,
-                )
-            }
-
-            BlockType.H3 -> {
-                H3(
-                    blockId = blockId,
-                    text = textContent,
-                )
-            }
-
-            BlockType.H4 -> {
-                H4(
-                    blockId = blockId,
-                    text = textContent,
-                )
-            }
-
-            BlockType.TASK_LIST_ITEM -> {
-                TaskListItem(
-                    blockId = blockId,
-                    text = textContent,
-                    checked = extra == true
-                )
-            }
-
-            BlockType.CODE -> {
-                Code(
-                    blockId = blockId,
-                    text = textContent,
-                )
-            }
-        }
+        val newBlock = createBlock(blockId, type, textContent, extra)
 
         note.blocks[blockIndex] = newBlock
         return newBlock
     }
 
     override suspend fun deleteBlock(noteId: Long, noteBlockId: Long) {
-        val note = getNoteById(noteId) ?: return
+        val note = findNote(noteId) ?: return
 
         val blockIndex = note.blocks.indexOfFirst { it.blockId == noteBlockId }
         if (blockIndex == -1) return
@@ -239,7 +195,7 @@ class MockRepositoryImpl : Repository {
         noteBlockId: Long,
         fileSource: AsyncRawSource
     ): NoteBlock.Image? {
-        val note = getNoteById(noteId) ?: return null
+        val note = findNote(noteId) ?: return null
         val noteBlockIndex = note.blocks.indexOfFirst { it.blockId == noteBlockId }
         if (noteBlockIndex == -1) return null
         val oldBlock = note.blocks[noteBlockIndex] as? NoteBlock.Image ?: return null
@@ -247,8 +203,7 @@ class MockRepositoryImpl : Repository {
         val newUrl = saveImageAndRemoveOldIfNotNull(fileSource, oldBlock.url)
         val newBlock = oldBlock.copy(url = newUrl)
 
-        note.blocks.removeAt(noteBlockIndex)
-        note.blocks.add(noteBlockIndex, newBlock)
+        note.blocks[noteBlockIndex] = newBlock
         return newBlock
     }
 
@@ -257,16 +212,15 @@ class MockRepositoryImpl : Repository {
         noteBlockId: Long,
         fileSource: AsyncRawSource
     ): NoteBlock.Image? {
-        val note = getNoteById(noteId) ?: return null
+        val note = findNote(noteId) ?: return null
         val noteBlockIndex = note.blocks.indexOfFirst { it.blockId == noteBlockId }
         if (noteBlockIndex == -1) return null
         val oldBlock = note.blocks[noteBlockIndex]
 
-        val newUrl = saveImageAndRemoveOldIfNotNull(fileSource, null)
+        val newUrl = saveImageAndRemoveOldIfNotNull(fileSource, (oldBlock as? Image)?.url)
         val newBlock = NoteBlock.Image(blockId = oldBlock.blockId, url = newUrl)
 
-        note.blocks.removeAt(noteBlockIndex)
-        note.blocks.add(noteBlockIndex, newBlock)
+        note.blocks[noteBlockIndex] = newBlock
         return newBlock
     }
 
@@ -275,13 +229,14 @@ class MockRepositoryImpl : Repository {
         noteBlockId: Long,
         content: String
     ): NoteBlock.Text? {
-        val note = getNoteById(noteId) ?: return null
+        val note = findNote(noteId) ?: return null
         val noteBlockIndex = note.blocks.indexOfFirst { it.blockId == noteBlockId }
         if (noteBlockIndex == -1) return null
         val oldBlock = note.blocks[noteBlockIndex] as? NoteBlock.Text ?: return null
 
-        val newBLock = oldBlock.copyText(content = content)
-        return newBLock
+        val newBlock = oldBlock.copyText(content)
+        note.blocks[noteBlockIndex] = newBlock
+        return newBlock
     }
 
     override suspend fun saveCheckedToTaskListItemBlock(
@@ -289,39 +244,53 @@ class MockRepositoryImpl : Repository {
         noteBlockId: Long,
         checked: Boolean
     ): NoteBlock.TaskListItem? {
-        val note = getNoteById(noteId) ?: return null
+        val note = findNote(noteId) ?: return null
         val noteBlockIndex = note.blocks.indexOfFirst { it.blockId == noteBlockId }
         if (noteBlockIndex == -1) return null
         val oldBlock = note.blocks[noteBlockIndex] as? NoteBlock.TaskListItem ?: return null
 
         val newBlock = oldBlock.copy(checked = checked)
-        note.blocks.removeAt(noteBlockIndex)
-        note.blocks.add(noteBlockIndex, newBlock)
+        note.blocks[noteBlockIndex] = newBlock
         return newBlock
     }
 
     override suspend fun getNoteFolderById(folderId: Long): NoteFolder? {
-        return folders.firstOrNull { it.id == folderId }
+        return folders.firstOrNull { it.id == folderId }?.snapshot()
     }
 
     override suspend fun newFolder(): NoteFolder {
-        val folder = NoteFolder(folderId++, "New Folder", emptyList())
+        val folder = MockFolder(nextFolderId++, "New Folder")
         folders.add(0, folder)
-        return folder
+        return folder.snapshot()
     }
 
     override suspend fun changeFolderName(
         folderId: Long,
         name: String
     ): NoteFolder {
-        return folders.first { it.id == folderId }.copy(name = name)
+        val folder = folders.first { it.id == folderId }
+        folder.name = name
+        return folder.snapshot()
     }
 
-    override suspend fun removeNoteFromFolder(folderId: Long, deleteNoteId: Long) {
+    override suspend fun deleteNoteFolder(folderId: Long): NoteFolder? {
         val index = folders.indexOfFirst { it.id == folderId }
-        if (index == -1) return
-        val folder = folders[index]
-        folders[index] = folder.copy(notes = folder.notes.filterNot { it.id == deleteNoteId })
+        if (index == -1) {
+            return null
+        } else {
+            return folders.removeAt(index).snapshot()
+        }
+    }
+
+    private fun createBlock(id: Long, type: BlockType, text: String, extra: Any?): NoteBlock = when (type) {
+        BlockType.TEXT -> Content(id, text)
+        BlockType.H1 -> H1(id, text)
+        BlockType.H2 -> H2(id, text)
+        BlockType.H3 -> H3(id, text)
+        BlockType.H4 -> H4(id, text)
+        BlockType.IMAGE -> Image(id, null)
+        BlockType.TASK_LIST_ITEM -> TaskListItem(id, extra == true, text)
+        BlockType.CODE -> Code(id, text)
     }
 
     private fun NoteBlock.Text.copyText(content: String): NoteBlock.Text = when (this) {

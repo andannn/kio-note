@@ -17,10 +17,11 @@ import kio.http.respond
 import kio.http.respondHtml
 import kio.http.respondWithSink
 import kio.http.route
+import kio.note.components.moveTargetFolderList
 import kio.note.components.noteBlock
 import kio.note.components.noteContent
-import kio.note.components.noteFolders
 import kio.note.components.noteItem
+import kio.note.components.noteFolders
 import kio.note.components.noteList
 import kio.note.components.noteMainContentEmpty
 import kio.note.domain.BlockType
@@ -35,6 +36,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.withContext
 import kotlinx.html.div
 import kotlinx.html.id
+import kotlinx.html.ul
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
 
@@ -54,17 +56,11 @@ fun Route.notesRoute() {
                 get { call -> call.noteMainPage(noteId = requireNoteId()) }
                 delete { call -> call.handleDeleteNote() }
 
-                route("export") {
-                    get { call -> call.handleExportNote()  }
-                }
-
-                route("editor") {
-                    get { call -> call.handleGetNote() }
-                }
-
-                route("title") {
-                    patch { call -> call.handleChangeTitle() }
-                }
+                post("change_folder") { call -> call.handleChangeFolder() }
+                get("target_folder_list") { call -> call.handleGetMoveTargetFolders() }
+                get("export") { call -> call.handleExportNote()  }
+                get("editor") { call -> call.handleGetNote() }
+                patch("title") { call -> call.handleChangeTitle() }
 
                 route("blocks") {
                     post { call -> call.handleAddFirstBlock() }
@@ -191,6 +187,40 @@ private suspend fun CallContext.handleGetNote() {
     respondHtml {
         noteContent(note, focusFirstBlock = false)
     }
+}
+
+context(repo: Repository)
+private suspend fun CallContext.handleChangeFolder() {
+    val folderId = requestParameters["folderId"]?.toLongOrNull()
+    val note = repo.changeNoteFolder(requireNoteId(), folderId)
+    if (note == null) {
+        respond(HttpStatusCode.NotFound)
+        return
+    }
+
+    val userId = requireSession().userId
+    val folders = repo.getAllNoteFolder(userId)
+    respondHtml {
+        ul {
+            id = "folder_items"
+            hxSwapOob = "innerHTML"
+            noteFolders(folders, expandedFolderId = folderId)
+        }
+    }
+}
+
+context(repo: Repository)
+private suspend fun CallContext.handleGetMoveTargetFolders() {
+    val noteId = requireNoteId()
+    val note = repo.getNoteById(noteId)
+    if (note == null) {
+        respond(HttpStatusCode.NotFound)
+        return
+    }
+    val noteFolder = repo.getNoteFolderByNoteId(noteId)
+    val excludedFolderIds = noteFolder?.id?.let { listOf(it) } ?: emptyList()
+    val folders = repo.getAllNoteFolder(requireSession().userId, excludedFolderIds)
+    respondHtml { moveTargetFolderList(noteId, folders) }
 }
 
 context(repo: Repository)

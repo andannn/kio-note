@@ -128,11 +128,13 @@ interface Repository {
 
     // note
     suspend fun createNewNoteForUser(userId: Long): Note
-    suspend fun getAllNoteFolder(userId: Long): List<NoteFolder>
+    suspend fun getAllNoteFolder(userId: Long, excludedFolderIds: List<Long> = emptyList()): List<NoteFolder>
     suspend fun getAllNoteMetaData(userId: Long): List<Note>
     suspend fun getNoteById(id: Long): Note?
+    suspend fun getNoteFolderByNoteId(noteId: Long): NoteFolder?
     suspend fun getNoteBlocksFlow(id: Long): Flow<NoteBlock>
     suspend fun changeNoteTitleById(id: Long, title: String): Note?
+    suspend fun changeNoteFolder(noteId: Long, folderId: Long?): Note?
     suspend fun deleteNoteById(id: Long)
     suspend fun addBlockAfter(noteId: Long, blockId: Long?, type: BlockType): NoteBlock?
     suspend fun updateNoteBlock(noteId: Long, blockId: Long, type: BlockType, textContent: String, extra: Any?): NoteBlock?
@@ -146,7 +148,7 @@ interface Repository {
     suspend fun getNoteFolderById(folderId: Long): NoteFolder?
     suspend fun newFolder(): NoteFolder
     suspend fun changeFolderName(folderId: Long, name: String): NoteFolder
-    suspend fun removeNoteFromFolder(folderId: Long, deleteNoteId: Long)
+    suspend fun deleteNoteFolder(folderId: Long): NoteFolder?
 }
 
 private class RepositoryImpl(
@@ -187,7 +189,7 @@ private class RepositoryImpl(
         return pgPool.useConnection { it.createNoteForUser("Untitled", userId) }.toNote()
     }
 
-    override suspend fun getAllNoteFolder(userId: Long): List<NoteFolder> {
+    override suspend fun getAllNoteFolder(userId: Long, excludedFolderIds: List<Long>): List<NoteFolder> {
         TODO("Not yet implemented")
     }
 
@@ -201,12 +203,20 @@ private class RepositoryImpl(
         return note?.copy(blocks = noteBlocks.toMutableList())
     }
 
+    override suspend fun getNoteFolderByNoteId(noteId: Long): NoteFolder? {
+        TODO("Not yet implemented")
+    }
+
     override suspend fun getNoteBlocksFlow(id: Long): Flow<NoteBlock> {
         return pgPool.useConnection { it.getNoteBlocksFlow(id).map { it.toNoteBlock() } }
     }
 
     override suspend fun changeNoteTitleById(id: Long, title: String): Note? {
         return pgPool.useConnection { it.changeNoteTitle(id, title) }?.toNote()
+    }
+
+    override suspend fun changeNoteFolder(noteId: Long, folderId: Long?): Note? {
+        TODO("Not yet implemented")
     }
 
     override suspend fun deleteNoteById(id: Long) {
@@ -316,7 +326,7 @@ private class RepositoryImpl(
         TODO("Not yet implemented")
     }
 
-    override suspend fun removeNoteFromFolder(folderId: Long, deleteNoteId: Long) {
+    override suspend fun deleteNoteFolder(folderId: Long): NoteFolder? {
         TODO("Not yet implemented")
     }
 }

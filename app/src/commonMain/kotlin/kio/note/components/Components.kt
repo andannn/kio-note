@@ -73,12 +73,12 @@ fun TagConsumer<*>.noteAsideMenu(selectedNoteId: Long? = null) {
     }
 }
 
-fun TagConsumer<*>.noteFolders(folders: List<NoteFolder>) {
+fun TagConsumer<*>.noteFolders(
+    folders: List<NoteFolder>,
+    expandedFolderId: Long? = null,
+) {
     folders.forEach { folder ->
-        ul {
-            id = "note-folder-list"
-            folderItem(folder)
-        }
+        folderItem(folder, expanded = folder.id == expandedFolderId)
     }
 }
 
@@ -112,10 +112,7 @@ fun TagConsumer<*>.folderItem(folder: NoteFolder, expanded: Boolean = false) {
                     li(classes = "note-folder-empty") { +"No notes" }
                 } else {
                     folder.notes.forEach { note ->
-                        noteItem(
-                            note = note,
-                            folder = folder,
-                        )
+                        noteItem(note = note, folder = folder)
                     }
                 }
             }
@@ -455,7 +452,7 @@ private fun TagConsumer<*>.folderSectionOptionsMenu() {
         div(classes = "menu-popup") {
             button(classes = "menu-item") {
                 hxPost = "/notes/folders"
-                hxTarget = "#note-folder-list"
+                hxTarget = "#folder_items"
                 hxSwap = "afterbegin"
                 attributes["onclick"] = "closeMenu(this)"
 
@@ -479,6 +476,22 @@ private fun TagConsumer<*>.folderItemOptionsMenu(folderId: Long) {
                 hxSwap = "outerHTML"
                 attributes["onclick"] = "closeMenu(this)"
                 +"Edit Name"
+            }
+
+            button(classes = "menu-item") {
+                attributes["onclick"] = "closeMenu(this)"
+
+                +"Export"
+            }
+
+            hr {}
+
+            button(classes = "menu-item") {
+                attributes["onclick"] = "closeMenu(this)"
+                hxDelete = "/notes/folders/${folderId}"
+                hxTarget = "closest .note-folder"
+                hxSwap = "delete"
+                +"Delete"
             }
         }
     }
@@ -507,18 +520,34 @@ private fun TagConsumer<*>.noteItemOptionsMenu(noteId: Long, folder: NoteFolder?
 
                 +"Delete"
             }
-            button(classes = "menu-item") {
-                +"Move to Folder"
+
+            hr {}
+
+            details(classes = "menu-submenu") {
+                summary(classes = "menu-item menu-submenu-trigger") {
+                    hxGet = "/notes/$noteId/target_folder_list"
+                    hxTrigger = "click"
+                    hxTarget = "next .menu-submenu-content"
+                    hxSwap = "innerHTML"
+                    +"Move to Folder ›"
+                }
+                div(classes = "menu-submenu-content") {
+                    p(classes = "menu-empty") { +"Loading folders…" }
+                }
+                hr {}
+                button(classes = "menu-item", type = ButtonType.button) {
+                    attributes["onclick"] = "this.closest('.menu-submenu').removeAttribute('open')"
+                    +"‹ Back"
+                }
             }
 
             if (folder != null) {
-                hr {}
 
                 h2(classes = "section-title") { +folder.name }
 
                 button(classes = "menu-item") {
                     attributes["onclick"] = "closeMenu(this)"
-                    hxDelete = "/notes/folders/${folder.id}/remove_note?note_id=${noteId}"
+                    hxPost = "/notes/${noteId}/change_folder?folderId=null"
                     hxTarget = "closest .note-folder"
                     hxSwap = "outerHTML"
 
@@ -559,6 +588,24 @@ private fun TagConsumer<*>.addBlockMenu(
                         "task_list_item" -> +"TODO List"
                     }
                 }
+            }
+        }
+    }
+}
+
+fun TagConsumer<*>.moveTargetFolderList(noteId: Long, folders: List<NoteFolder>) {
+    if (folders.isEmpty()) {
+        p(classes = "menu-empty") { +"No available folders" }
+    } else {
+        folders.forEach { folder ->
+            button(classes = "menu-item", type = ButtonType.button) {
+                attributes["data-folder-id"] = folder.id.toString()
+                hxPost = "/notes/${noteId}/change_folder?folderId=${folder.id}"
+                hxSwap = "none"
+                attributes["hx-sync"] = "closest .menu:drop"
+                attributes["onclick"] = "closeMenu(this)"
+
+                +folder.name
             }
         }
     }

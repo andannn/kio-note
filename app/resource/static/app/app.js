@@ -8,10 +8,15 @@ document.addEventListener('click', event => {
         return
     }
 
-    document.querySelectorAll('.menu[open]').forEach(menu => {
-        menu.removeAttribute('open')
-    })
+    document.querySelectorAll('.menu[open]').forEach(closeMenu)
 })
+
+// Also reset submenus when the native details trigger closes the menu.
+document.addEventListener('toggle', event => {
+    if (event.target.matches('.menu') && !event.target.open) {
+        closeMenu(event.target)
+    }
+}, true)
 
 document.addEventListener('paste', event => {
     const input = event.target.closest("textarea[data-note-id]");
@@ -363,7 +368,13 @@ function handleImageBlockKeyDown(event, input) {
 }
 
 function closeMenu(element) {
-    element.closest('.menu')?.removeAttribute('open')
+    const menu = element.closest('.menu')
+    if (!menu) return
+
+    menu.querySelectorAll('.menu-submenu[open]').forEach(submenu => {
+        submenu.removeAttribute('open')
+    })
+    menu.removeAttribute('open')
 }
 
 function resizeTextBlock(textarea) {

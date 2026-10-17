@@ -28,7 +28,7 @@ fun Route.notesFolders() {
 
         route("/{id}") {
             inject(FolderId()) {
-                delete("remove_note") { call -> call.handleRemoveNote() }
+                delete { call -> call.handleDeleteFolder() }
                 post("name-editing") { call -> call.handleEditName() }
                 post("name-commit") { call -> call.handleCommitChangeName() }
             }
@@ -77,27 +77,17 @@ private suspend fun CallContext.handleCommitChangeName() {
     }
 }
 
+
 context(repo: Repository)
-private suspend fun CallContext.handleRemoveNote() {
-    val folderId = requireFolderId()
-    val deleteNoteId = requestParameters["note_id"]?.toLongOrNull()
-    if (deleteNoteId == null) {
-        respond(HttpStatusCode.BadRequest)
-        return
-    }
-
-    if (repo.getNoteFolderById(folderId) == null) {
+private suspend fun CallContext.handleDeleteFolder() {
+    val deleteId = requireFolderId()
+    val deleted = repo.deleteNoteFolder(deleteId)
+    if (deleted == null) {
         respond(HttpStatusCode.NotFound)
         return
     }
 
-    repo.removeNoteFromFolder(folderId, deleteNoteId)
-    val folder = repo.getNoteFolderById(folderId)
-    if (folder == null) {
-        respond(HttpStatusCode.NotFound)
-        return
-    }
-    respondHtml { folderItem(folder, expanded = true) }
+    respondHtml {}
 }
 
 context(repo: Repository)

@@ -935,3 +935,30 @@ hr {
 .auth-footer a:hover {
     color: #a5b4fc;
 }
+
+/* Folder picker: second level stays within the sidebar popup. */
+.menu-submenu-trigger {
+    list-style: none;
+}
+
+.menu-submenu-trigger::-webkit-details-marker {
+    display: none;
+}
+
+.menu-popup:has(> .menu-submenu[open]) > :not(.menu-submenu),
+.menu-submenu[open] > .menu-submenu-trigger {
+    display: none;
+}
+
+.menu-submenu-content {
+    max-height: 240px;
+    overflow-y: auto;
+    overflow-wrap: anywhere;
+}
+
+.menu-empty {
+    margin: 0;
+    padding: 8px 10px;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
