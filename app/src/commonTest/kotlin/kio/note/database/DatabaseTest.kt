@@ -203,12 +203,12 @@ abstract class DatabaseTest {
         val folder2 = createNewNoteFolder(1, "Test2")
         getAllNoteFolder(1, listOf()).also {
             assertEquals(2, it.size)
-            assertTrue(it.contains(folder1))
-            assertTrue(it.contains(folder2))
+            assertTrue(it.any { it.folderId == folder1.id })
+            assertTrue(it.any { it.folderId == folder2.id })
         }
         getAllNoteFolder(1, listOf(folder1.id)).also {
             assertEquals(1, it.size)
-            assertTrue(it.contains(folder2))
+            assertTrue(it.any { it.folderId == folder2.id })
         }
     }
 
@@ -224,8 +224,10 @@ abstract class DatabaseTest {
         val folder1 = createNewNoteFolder(1, "Test 1")
         val note = createNoteForUser("new note", 1)
         changeNoteFolder(note.id, folder1.id)
-        val folder = getNoteFolderByNoteId(note.id)
-        assertEquals(folder1, folder)
+        getNoteFolderByNoteId(note.id).also { folder ->
+            assertEquals(1, folder.size)
+            assertEquals(note.id, folder.first().noteId)
+        }
     }
 
     @Test
@@ -243,15 +245,25 @@ abstract class DatabaseTest {
     @Test
     fun getNoteFolderByIdTest() = withTestPgDatabase {
         val folder = createNewNoteFolder(1, "Test")
-        val noteFolder = getNoteFolderById(folderId = folder.id)
-        assertEquals(folder, noteFolder)
+        getNoteFolderById(folderId = folder.id).also { folder ->
+            assertEquals(1, folder.size)
+        }
+
+        val note = createNoteForUser("new note", 1)
+        changeNoteFolder(note.id, folderId = folder.id)
+
+        getNoteFolderById(folderId = folder.id).also { folder ->
+            assertEquals(1, folder.size)
+            assertEquals(note.id, folder.first().noteId)
+            assertEquals(note.title, folder.first().noteTitle)
+        }
     }
 
     @Test
     fun changeFolderNameTest() = withTestPgDatabase {
         val folder = createNewNoteFolder(1, "Test")
         val new = changeNoteFolderName(folderId = folder.id, "New Name")
-        assertEquals("New Name", new?.name)
+        assertEquals("New Name", new.first().folderName)
     }
 
     fun withTestPgDatabase(

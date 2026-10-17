@@ -112,7 +112,7 @@ context(repo: Repository)
 private suspend fun CallContext.handleNewFolder() {
     val folder = repo.newFolder(requireSession().userId, "New Folder")
     respondHtml {
-        folderItem(folder)
+        folderNameEditor(folder)
     }
 }
 

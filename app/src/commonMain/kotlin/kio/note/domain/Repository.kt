@@ -7,6 +7,7 @@ import kio.http.trace
 import kio.note.database.NoteBlockEntity
 import kio.note.database.NoteFolderEntity
 import kio.note.database.NoteUserEntity
+import kio.note.database.NoteWithFolderEntity
 import kio.note.database.NotesEntity
 import kio.note.database.changeNoteFolder
 import kio.note.database.changeNoteFolderName
@@ -143,7 +144,6 @@ interface Repository {
     suspend fun getNoteFolderByNoteId(noteId: Long): NoteFolder?
     suspend fun getNoteBlocksFlow(id: Long): Flow<NoteBlock>
     suspend fun changeNoteTitleById(id: Long, title: String): Note?
-    suspend fun changeNoteFolder(noteId: Long, folderId: Long?): Note?
     suspend fun deleteNoteById(id: Long)
     suspend fun addBlockAfter(noteId: Long, blockId: Long?, type: BlockType): NoteBlock?
     suspend fun updateNoteBlock(noteId: Long, blockId: Long, type: BlockType, textContent: String, extra: Any?): NoteBlock?
@@ -158,6 +158,7 @@ interface Repository {
     suspend fun newFolder(userId: Long, folderName: String): NoteFolder
     suspend fun changeFolderName(folderId: Long, name: String): NoteFolder?
     suspend fun deleteNoteFolder(folderId: Long): NoteFolder?
+    suspend fun changeNoteFolder(noteId: Long, folderId: Long?): Note?
 }
 
 private class RepositoryImpl(
@@ -199,7 +200,9 @@ private class RepositoryImpl(
     }
 
     override suspend fun getAllNoteFolder(userId: Long, excludedFolderIds: List<Long>): List<NoteFolder> {
-        return pgPool.useConnection { it.getAllNoteFolder(userId, excludedFolderIds) }.map { it.toFolder() }
+        return pgPool.useConnection {
+            noteWithFolderToFolderModels(it.getAllNoteFolder(userId, excludedFolderIds))
+        }
     }
 
     override suspend fun getAllNoteMetaData(userId: Long): List<Note> {
@@ -214,8 +217,7 @@ private class RepositoryImpl(
 
     override suspend fun getNoteFolderByNoteId(noteId: Long): NoteFolder? {
         return pgPool.useConnection {
-            it.getNoteFolderByNoteId(noteId)?.toFolder()
-            // TODO: return notes of folder
+            noteWithFolderToFolderModels(it.getNoteFolderByNoteId(noteId)).firstOrNull()
         }
     }
 
@@ -225,10 +227,6 @@ private class RepositoryImpl(
 
     override suspend fun changeNoteTitleById(id: Long, title: String): Note? {
         return pgPool.useConnection { it.changeNoteTitle(id, title) }?.toNote()
-    }
-
-    override suspend fun changeNoteFolder(noteId: Long, folderId: Long?): Note? {
-        return pgPool.useConnection { it.changeNoteFolder(noteId, folderId)?.toNote() }
     }
 
     override suspend fun deleteNoteById(id: Long) {
@@ -325,8 +323,7 @@ private class RepositoryImpl(
 
     override suspend fun getNoteFolderById(folderId: Long): NoteFolder? {
         return pgPool.useConnection {
-            it.getNoteFolderById(folderId)?.toFolder()
-            // TODO: get notes of folder
+            noteWithFolderToFolderModels(it.getNoteFolderById(folderId)).firstOrNull()
         }
     }
 
@@ -336,19 +333,36 @@ private class RepositoryImpl(
 
     override suspend fun changeFolderName(folderId: Long, name: String): NoteFolder? {
         return pgPool.useConnection {
-            it.changeNoteFolderName(folderId, name)?.toFolder()
-            // TODO: get notes of folder
+            noteWithFolderToFolderModels(it.changeNoteFolderName(folderId, name)).firstOrNull()
         }
     }
 
     override suspend fun deleteNoteFolder(folderId: Long): NoteFolder? {
         return pgPool.useConnection { it.deleteNoteFolder(folderId)?.toFolder() }
     }
+
+    override suspend fun changeNoteFolder(noteId: Long, folderId: Long?): Note? {
+        return pgPool.useConnection { it.changeNoteFolder(noteId, folderId)?.toNote() }
+    }
 }
 
 private fun NoteUserEntity.toUser(): User = User(id = id, username = username, passwordHash = passwordHash)
 private fun NotesEntity.toNote(): Note = Note(id = id, title = title)
 private fun NoteFolderEntity.toFolder(notes: List<Note> = emptyList()): NoteFolder = NoteFolder(id = id, name = name, notes = notes)
+private fun noteWithFolderToFolderModels(
+    rows: List<NoteWithFolderEntity>,
+): List<NoteFolder> =
+    rows.groupBy { it.folderId }.map { (folderId, items) ->
+        NoteFolder(
+            id = folderId,
+            name = items.first().folderName,
+            notes = items.mapNotNull { item ->
+                val noteId = item.noteId ?: return@mapNotNull null
+                val title = item.noteTitle ?: return@mapNotNull null
+                Note(id = noteId, title = title)
+            },
+        )
+    }
 
 private fun NoteBlockEntity.toNoteBlock(): NoteBlock = when (type) {
     NoteBlockEntity.BLOCK_TYPE_H1 -> NoteBlock.Text.H1(blockId = id, textContent ?: "")

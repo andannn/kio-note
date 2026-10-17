@@ -529,7 +529,7 @@ private fun TagConsumer<*>.noteItemOptionsMenu(noteId: Long, folder: NoteFolder?
                     hxTrigger = "click"
                     hxTarget = "next .menu-submenu-content"
                     hxSwap = "innerHTML"
-                    +"Move to Folder ›"
+                    +"Add to Folder ›"
                 }
                 div(classes = "menu-submenu-content") {
                     p(classes = "menu-empty") { +"Loading folders…" }
