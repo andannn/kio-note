@@ -71,6 +71,10 @@ private suspend fun CallContext.handleCommitChangeName() {
     }
 
     val folder = repo.changeFolderName(requireFolderId(), name)
+    if (folder == null) {
+        respond(HttpStatusCode.NotFound)
+        return
+    }
 
     respondHtml {
         folderItem(folder)
@@ -106,7 +110,7 @@ private suspend fun CallContext.handleEditName() {
 
 context(repo: Repository)
 private suspend fun CallContext.handleNewFolder() {
-    val folder = repo.newFolder()
+    val folder = repo.newFolder(requireSession().userId, "New Folder")
     respondHtml {
         folderItem(folder)
     }

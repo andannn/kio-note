@@ -5,20 +5,28 @@ import kio.http.currentLogger
 import kio.http.info
 import kio.http.trace
 import kio.note.database.NoteBlockEntity
+import kio.note.database.NoteFolderEntity
 import kio.note.database.NoteUserEntity
 import kio.note.database.NotesEntity
+import kio.note.database.changeNoteFolder
+import kio.note.database.changeNoteFolderName
 import kio.note.database.changeNoteTitle
 import kio.note.database.createBlockAfter
+import kio.note.database.createNewNoteFolder
 import kio.note.database.createNoteForUser
 import kio.note.database.createSession
 import kio.note.database.createUser
 import kio.note.database.deleteBlockById
 import kio.note.database.deleteNoteById
+import kio.note.database.deleteNoteFolder
 import kio.note.database.getAllNote
+import kio.note.database.getAllNoteFolder
 import kio.note.database.getNoteBlocksById
 import kio.note.database.getNoteBlocksByNoteBlockId
 import kio.note.database.getNoteBlocksFlow
 import kio.note.database.getNoteById
+import kio.note.database.getNoteFolderById
+import kio.note.database.getNoteFolderByNoteId
 import kio.note.database.getUserByUsername
 import kio.note.database.getUserIdBySessionId
 import kio.note.database.saveCheckedToBlock
@@ -31,6 +39,7 @@ import kio.note.util.hashPassword
 import kio.note.util.removeFile
 import kio.note.util.saveFileToPath
 import kio.postgres.conn.PgConnectionPool
+import kio.postgres.conn.transaction
 import kio.postgres.conn.useConnection
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -146,8 +155,8 @@ interface Repository {
 
     // folder
     suspend fun getNoteFolderById(folderId: Long): NoteFolder?
-    suspend fun newFolder(): NoteFolder
-    suspend fun changeFolderName(folderId: Long, name: String): NoteFolder
+    suspend fun newFolder(userId: Long, folderName: String): NoteFolder
+    suspend fun changeFolderName(folderId: Long, name: String): NoteFolder?
     suspend fun deleteNoteFolder(folderId: Long): NoteFolder?
 }
 
@@ -190,7 +199,7 @@ private class RepositoryImpl(
     }
 
     override suspend fun getAllNoteFolder(userId: Long, excludedFolderIds: List<Long>): List<NoteFolder> {
-        TODO("Not yet implemented")
+        return pgPool.useConnection { it.getAllNoteFolder(userId, excludedFolderIds) }.map { it.toFolder() }
     }
 
     override suspend fun getAllNoteMetaData(userId: Long): List<Note> {
@@ -204,7 +213,10 @@ private class RepositoryImpl(
     }
 
     override suspend fun getNoteFolderByNoteId(noteId: Long): NoteFolder? {
-        TODO("Not yet implemented")
+        return pgPool.useConnection {
+            it.getNoteFolderByNoteId(noteId)?.toFolder()
+            // TODO: return notes of folder
+        }
     }
 
     override suspend fun getNoteBlocksFlow(id: Long): Flow<NoteBlock> {
@@ -216,7 +228,7 @@ private class RepositoryImpl(
     }
 
     override suspend fun changeNoteFolder(noteId: Long, folderId: Long?): Note? {
-        TODO("Not yet implemented")
+        return pgPool.useConnection { it.changeNoteFolder(noteId, folderId)?.toNote() }
     }
 
     override suspend fun deleteNoteById(id: Long) {
@@ -312,27 +324,31 @@ private class RepositoryImpl(
     }
 
     override suspend fun getNoteFolderById(folderId: Long): NoteFolder? {
-        TODO("Not yet implemented")
+        return pgPool.useConnection {
+            it.getNoteFolderById(folderId)?.toFolder()
+            // TODO: get notes of folder
+        }
     }
 
-    override suspend fun newFolder(): NoteFolder {
-        TODO("Not yet implemented")
+    override suspend fun newFolder(userId: Long, folderName: String): NoteFolder {
+        return pgPool.useConnection { it.createNewNoteFolder(userId, folderName) }.toFolder()
     }
 
-    override suspend fun changeFolderName(
-        folderId: Long,
-        name: String
-    ): NoteFolder {
-        TODO("Not yet implemented")
+    override suspend fun changeFolderName(folderId: Long, name: String): NoteFolder? {
+        return pgPool.useConnection {
+            it.changeNoteFolderName(folderId, name)?.toFolder()
+            // TODO: get notes of folder
+        }
     }
 
     override suspend fun deleteNoteFolder(folderId: Long): NoteFolder? {
-        TODO("Not yet implemented")
+        return pgPool.useConnection { it.deleteNoteFolder(folderId)?.toFolder() }
     }
 }
 
 private fun NoteUserEntity.toUser(): User = User(id = id, username = username, passwordHash = passwordHash)
 private fun NotesEntity.toNote(): Note = Note(id = id, title = title)
+private fun NoteFolderEntity.toFolder(notes: List<Note> = emptyList()): NoteFolder = NoteFolder(id = id, name = name, notes = notes)
 
 private fun NoteBlockEntity.toNoteBlock(): NoteBlock = when (type) {
     NoteBlockEntity.BLOCK_TYPE_H1 -> NoteBlock.Text.H1(blockId = id, textContent ?: "")

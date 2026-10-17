@@ -191,6 +191,69 @@ abstract class DatabaseTest {
         assertTrue(getNoteBlocksByNoteBlockId(block1.id)!!.checked)
     }
 
+    @Test
+    fun createNoteFolder() = withTestPgDatabase {
+        val folder = createNewNoteFolder(1, "Test")
+        assertEquals("Test", folder.name)
+    }
+
+    @Test
+    fun getAllNoteFolderTest() = withTestPgDatabase {
+        val folder1 = createNewNoteFolder(1, "Test1")
+        val folder2 = createNewNoteFolder(1, "Test2")
+        getAllNoteFolder(1, listOf()).also {
+            assertEquals(2, it.size)
+            assertTrue(it.contains(folder1))
+            assertTrue(it.contains(folder2))
+        }
+        getAllNoteFolder(1, listOf(folder1.id)).also {
+            assertEquals(1, it.size)
+            assertTrue(it.contains(folder2))
+        }
+    }
+
+    @Test
+    fun deleteNoteFolderTest() = withTestPgDatabase {
+        val folder = createNewNoteFolder(1, "Test")
+        val deleted = deleteNoteFolder(folder.id)
+        assertEquals(folder, deleted)
+    }
+
+    @Test
+    fun getNoteFolderByNoteIdTest() = withTestPgDatabase {
+        val folder1 = createNewNoteFolder(1, "Test 1")
+        val note = createNoteForUser("new note", 1)
+        changeNoteFolder(note.id, folder1.id)
+        val folder = getNoteFolderByNoteId(note.id)
+        assertEquals(folder1, folder)
+    }
+
+    @Test
+    fun changeNoteFolderTest() = withTestPgDatabase {
+        val folder1 = createNewNoteFolder(1, "Test 1")
+        val note = createNoteForUser("new note", 1)
+        changeNoteFolder(note.id, folder1.id).also { new ->
+            assertEquals(folder1.id, new?.folderId)
+        }
+        changeNoteFolder(note.id, null).also { new ->
+            assertEquals(null, note.folderId)
+        }
+    }
+
+    @Test
+    fun getNoteFolderByIdTest() = withTestPgDatabase {
+        val folder = createNewNoteFolder(1, "Test")
+        val noteFolder = getNoteFolderById(folderId = folder.id)
+        assertEquals(folder, noteFolder)
+    }
+
+    @Test
+    fun changeFolderNameTest() = withTestPgDatabase {
+        val folder = createNewNoteFolder(1, "Test")
+        val new = changeNoteFolderName(folderId = folder.id, "New Name")
+        assertEquals("New Name", new?.name)
+    }
+
     fun withTestPgDatabase(
         block: suspend PgConnection.() -> Unit
     ) =

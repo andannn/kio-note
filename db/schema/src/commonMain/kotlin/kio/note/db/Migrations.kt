@@ -7,6 +7,7 @@ val migrations get() = listOf(
     migration_1,
     migration_2,
     migration_3,
+    migration_4,
 )
 
 suspend fun PgConnection.dropAllTables() {
@@ -15,6 +16,7 @@ suspend fun PgConnection.dropAllTables() {
     exec("drop table if exists sessions cascade")
     exec("drop table if exists notes cascade")
     exec("drop table if exists note_blocks cascade")
+    exec("drop table if exists note_folders cascade")
 }
 
 val migration_1 = Migration(
@@ -101,5 +103,29 @@ val migration_3 = Migration(
     sql = """
 alter table note_blocks
 add column checked boolean not null default false;
+""".trimIndent()
+)
+
+val migration_4 = Migration(
+    version = 4,
+    name = "migration_4",
+    sql = """
+create table note_folders (
+    id bigserial primary key,
+    user_id bigint not null
+        references users(id)
+        on delete cascade,
+    folder_name text not null,
+    create_at timestamptz not null default now()
+);
+
+alter table notes
+add column note_folder_id bigint;
+
+alter table notes
+add constraint fk_note_folder_id
+foreign key (note_folder_id)
+references note_folders(id)
+on delete set null;
 """.trimIndent()
 )

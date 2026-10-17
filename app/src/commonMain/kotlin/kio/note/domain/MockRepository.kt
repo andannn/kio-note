@@ -258,8 +258,8 @@ class MockRepositoryImpl : Repository {
         return folders.firstOrNull { it.id == folderId }?.snapshot()
     }
 
-    override suspend fun newFolder(): NoteFolder {
-        val folder = MockFolder(nextFolderId++, "New Folder")
+    override suspend fun newFolder(userId: Long, folderName: String): NoteFolder {
+        val folder = MockFolder(nextFolderId++, folderName)
         folders.add(0, folder)
         return folder.snapshot()
     }
@@ -267,7 +267,7 @@ class MockRepositoryImpl : Repository {
     override suspend fun changeFolderName(
         folderId: Long,
         name: String
-    ): NoteFolder {
+    ): NoteFolder? {
         val folder = folders.first { it.id == folderId }
         folder.name = name
         return folder.snapshot()
