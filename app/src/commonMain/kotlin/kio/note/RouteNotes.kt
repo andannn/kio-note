@@ -1,37 +1,14 @@
 package kio.note
 
-import io.ktor.http.HttpStatusCode
-import kio.async.buffered
-import kio.async.writeString
-import kio.compression.file
+import io.ktor.http.*
 import kio.compression.writeZip
-import kio.http.CallContext
-import kio.http.CallInterceptor
-import kio.http.Route
-import kio.http.delete
-import kio.http.get
-import kio.http.patch
-import kio.http.post
-import kio.http.receiveFormParameters
-import kio.http.respond
-import kio.http.respondHtml
-import kio.http.respondWithSink
-import kio.http.route
-import kio.note.components.moveTargetFolderList
-import kio.note.components.noteBlock
-import kio.note.components.noteContent
-import kio.note.components.noteItem
-import kio.note.components.noteFolders
-import kio.note.components.noteList
-import kio.note.components.noteMainContentEmpty
+import kio.http.*
+import kio.note.components.*
 import kio.note.domain.BlockType
-import kio.note.domain.NoteBlock
 import kio.note.domain.Repository
-import kio.note.domain.imageFileName
-import kio.note.domain.imageUrlToLocalPath
 import kio.note.page.noteMainPage
-import kio.note.util.fileSource
 import kio.note.util.hxSwapOob
+import kio.note.util.writeMarkdownFolder
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.withContext
 import kotlinx.html.div
@@ -58,7 +35,7 @@ fun Route.notesRoute() {
 
                 post("change_folder") { call -> call.handleChangeFolder() }
                 get("target_folder_list") { call -> call.handleGetMoveTargetFolders() }
-                get("export") { call -> call.handleExportNote()  }
+                get("export") { call -> call.handleExportNote() }
                 get("editor") { call -> call.handleGetNote() }
                 patch("title") { call -> call.handleChangeTitle() }
 
@@ -264,49 +241,7 @@ private suspend fun CallContext.handleExportNote() {
         }
     ) { sink ->
         sink.writeZip {
-            val baseFolder = note.title
-                .replace(Regex("""[<>:"/\\|?*\x00-\x1F]"""), "_")
-                .trim()
-                .trimEnd('.')
-                .ifEmpty { "note-${note.id}" }
-            val imageUrls = mutableListOf<String>()
-            file("${baseFolder}/content.md") { zipSink ->
-                repo.getNoteBlocksFlow(note.id).collect { block ->
-                    val markdownBlock = when (block) {
-                        is NoteBlock.Image -> {
-                            if (block.url != null) {
-                                imageUrls.add(block.url)
-                                "![${block.blockId}](./${imageFileName(block.url)})"
-                            } else {
-                                ""
-                            }
-                        }
-                        is NoteBlock.TaskListItem -> """- [${if(block.checked) "x" else " " }] ${block.text}"""
-                        is NoteBlock.Text.Content -> block.text
-                        is NoteBlock.Text.H1 -> "# ${block.text}"
-                        is NoteBlock.Text.H2 -> "## ${block.text}"
-                        is NoteBlock.Text.H3 -> "### ${block.text}"
-                        is NoteBlock.Text.H4 -> "#### ${block.text}"
-                        is NoteBlock.Code -> """
-```
-${block.text}
-```
-                        """.trimIndent()
-                    }
-
-                    zipSink.writeString(markdownBlock)
-                    zipSink.writeString("\n\n")
-                }
-            }
-
-            imageUrls.forEach { url ->
-                val fileName = imageFileName(url)
-                val localPath = imageUrlToLocalPath(url)
-                file("${baseFolder}/${fileName}") { sink ->
-                    val source = fileSource(localPath).buffered()
-                    sink.transferFrom(source)
-                }
-            }
+            writeMarkdownFolder(null, note, blocksGetter = { repo.getNoteBlocksFlow(it) })
         }
     }
 }

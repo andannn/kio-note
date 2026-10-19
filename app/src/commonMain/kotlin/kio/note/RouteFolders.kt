@@ -1,6 +1,7 @@
 package kio.note
 
 import io.ktor.http.HttpStatusCode
+import kio.compression.writeZip
 import kio.http.CallContext
 import kio.http.CallInterceptor
 import kio.http.Route
@@ -10,11 +11,14 @@ import kio.http.post
 import kio.http.respond
 import kio.http.receiveFormParameters
 import kio.http.respondHtml
+import kio.http.respondWithSink
 import kio.http.route
 import kio.note.components.folderItem
 import kio.note.components.folderNameEditor
 import kio.note.components.noteFolders
 import kio.note.domain.Repository
+import kio.note.util.validName
+import kio.note.util.writeMarkdownFolder
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.AbstractCoroutineContextElement
@@ -31,6 +35,7 @@ fun Route.notesFolders() {
                 delete { call -> call.handleDeleteFolder() }
                 post("name-editing") { call -> call.handleEditName() }
                 post("name-commit") { call -> call.handleCommitChangeName() }
+                get("export") { call -> call.handleExportNoteFolder() }
             }
         }
     }
@@ -121,5 +126,34 @@ private suspend fun CallContext.handleGetNoteFolders() {
     val noteFolder = repo.getAllNoteFolder(requireSession().userId)
     respondHtml {
         noteFolders(noteFolder)
+    }
+}
+
+context(repo: Repository)
+private suspend fun CallContext.handleExportNoteFolder() {
+    val folder = repo.getNoteFolderById(requireFolderId())
+    if (folder == null) {
+        respond(HttpStatusCode.NotFound, "Folder notfound.")
+        return
+    }
+
+    val notes = folder.notes
+    if (notes.isEmpty()) {
+        respond(HttpStatusCode.NotFound, "Folder is empty.")
+        return
+    }
+
+    respondWithSink(
+        HttpStatusCode.OK,
+        configHeaders = {
+            append("Content-Disposition", "attachment; filename=${folder.name}.zip")
+        }
+    ) { sink ->
+        sink.writeZip {
+            val folderName = validName(folder.name)
+            notes.forEach { note ->
+                writeMarkdownFolder(folderName, note, blocksGetter = { repo.getNoteBlocksFlow(it) })
+            }
+        }
     }
 }

@@ -479,9 +479,11 @@ private fun TagConsumer<*>.folderItemOptionsMenu(folderId: Long) {
                 +"Edit Name"
             }
 
-            button(classes = "menu-item") {
+            a(
+                href = "/notes/folders/$folderId/export",
+                classes = "menu-item"
+            ) {
                 attributes["onclick"] = "closeMenu(this)"
-
                 +"Export"
             }
 
