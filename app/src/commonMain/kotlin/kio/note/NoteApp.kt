@@ -71,6 +71,7 @@ private suspend fun CoroutineScope.setupServer(
         DataSourceType.PRODUCTION -> {
             httpServer(
                 serverSocket = serverSocket,
+                loggingBackEnd = AsyncLoggingBackEnd(this, enableTrace = true),
                 connectionWrapper = {
                     withServerTls(
                         env.tlsCert.pem,
