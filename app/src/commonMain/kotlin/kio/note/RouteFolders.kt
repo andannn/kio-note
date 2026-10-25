@@ -75,7 +75,7 @@ private suspend fun CallContext.handleCommitChangeName() {
         return
     }
 
-    val folder = repo.changeFolderName(requireFolderId(), name)
+    val folder = repo.changeFolderName(userId = requireSession().userId,requireFolderId(), name)
     if (folder == null) {
         respond(HttpStatusCode.NotFound)
         return
@@ -90,7 +90,7 @@ private suspend fun CallContext.handleCommitChangeName() {
 context(repo: Repository)
 private suspend fun CallContext.handleDeleteFolder() {
     val deleteId = requireFolderId()
-    val deleted = repo.deleteNoteFolder(deleteId)
+    val deleted = repo.deleteNoteFolder(userId = requireSession().userId,deleteId)
     if (deleted == null) {
         respond(HttpStatusCode.NotFound)
         return
@@ -102,7 +102,7 @@ private suspend fun CallContext.handleDeleteFolder() {
 context(repo: Repository)
 private suspend fun CallContext.handleEditName() {
     val folderId = requireFolderId()
-    val folder = repo.getNoteFolderById(folderId)
+    val folder = repo.getNoteFolderById(userId = requireSession().userId,folderId)
     if (folder == null) {
         respond(HttpStatusCode.NotFound)
         return
@@ -131,7 +131,7 @@ private suspend fun CallContext.handleGetNoteFolders() {
 
 context(repo: Repository)
 private suspend fun CallContext.handleExportNoteFolder() {
-    val folder = repo.getNoteFolderById(requireFolderId())
+    val folder = repo.getNoteFolderById(userId = requireSession().userId,requireFolderId())
     if (folder == null) {
         respond(HttpStatusCode.NotFound, "Folder notfound.")
         return
@@ -152,7 +152,7 @@ private suspend fun CallContext.handleExportNoteFolder() {
         sink.writeZip {
             val folderName = validName(folder.name)
             notes.forEach { note ->
-                writeMarkdownFolder(folderName, note, blocksGetter = { repo.getNoteBlocksFlow(it) })
+                writeMarkdownFolder(folderName, note, blocksGetter = { repo.getNoteBlocksFlow(userId = requireSession().userId,it) })
             }
         }
     }

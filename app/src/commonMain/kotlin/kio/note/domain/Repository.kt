@@ -140,24 +140,24 @@ interface Repository {
     suspend fun getAllNoteFolder(userId: Long, excludedFolderIds: List<Long> = emptyList()): List<NoteFolder>
     suspend fun getAllNoteMetaData(userId: Long): List<Note>
     suspend fun getNoteById(userId: Long, id: Long): Note?
-    suspend fun getNoteFolderByNoteId(noteId: Long): NoteFolder?
-    suspend fun getNoteBlocksFlow(id: Long): Flow<NoteBlock>
-    suspend fun changeNoteTitleById(id: Long, title: String): Note?
-    suspend fun deleteNoteById(id: Long)
-    suspend fun addBlockAfter(noteId: Long, blockId: Long?, type: BlockType): NoteBlock?
-    suspend fun updateNoteBlock(noteId: Long, blockId: Long, type: BlockType, textContent: String, extra: Any?): NoteBlock?
-    suspend fun deleteBlock(noteId: Long, noteBlockId: Long)
-    suspend fun saveImageToImageBlock(noteId: Long, noteBlockId: Long, fileSource: AsyncRawSource): NoteBlock.Image?
-    suspend fun saveImageAndChangeBlockTypeToImage(noteId: Long, noteBlockId: Long, fileSource: AsyncRawSource): NoteBlock.Image?
-    suspend fun saveTextToTextBlock(noteId: Long, noteBlockId: Long, content: String): NoteBlock.Text?
-    suspend fun saveCheckedToTaskListItemBlock(noteId: Long, noteBlockId: Long, checked: Boolean): NoteBlock.TaskListItem?
+    suspend fun getNoteFolderByNoteId(userId: Long, noteId: Long): NoteFolder?
+    suspend fun getNoteBlocksFlow(userId: Long, id: Long): Flow<NoteBlock>
+    suspend fun changeNoteTitleById(userId: Long, id: Long, title: String): Note?
+    suspend fun deleteNoteById(userId: Long, id: Long)
+    suspend fun addBlockAfter(userId: Long, noteId: Long, blockId: Long?, type: BlockType): NoteBlock?
+    suspend fun updateNoteBlock(userId: Long, noteId: Long, blockId: Long, type: BlockType, textContent: String, extra: Any?): NoteBlock?
+    suspend fun deleteBlock(userId: Long, noteId: Long, noteBlockId: Long)
+    suspend fun saveImageToImageBlock(userId: Long, noteId: Long, noteBlockId: Long, fileSource: AsyncRawSource): NoteBlock.Image?
+    suspend fun saveImageAndChangeBlockTypeToImage(userId: Long, noteId: Long, noteBlockId: Long, fileSource: AsyncRawSource): NoteBlock.Image?
+    suspend fun saveTextToTextBlock(userId: Long, noteId: Long, noteBlockId: Long, content: String): NoteBlock.Text?
+    suspend fun saveCheckedToTaskListItemBlock(userId: Long, noteId: Long, noteBlockId: Long, checked: Boolean): NoteBlock.TaskListItem?
 
     // folder
-    suspend fun getNoteFolderById(folderId: Long): NoteFolder?
+    suspend fun getNoteFolderById(userId: Long, folderId: Long): NoteFolder?
     suspend fun newFolder(userId: Long, folderName: String): NoteFolder
-    suspend fun changeFolderName(folderId: Long, name: String): NoteFolder?
-    suspend fun deleteNoteFolder(folderId: Long): NoteFolder?
-    suspend fun changeNoteFolder(noteId: Long, folderId: Long?): Note?
+    suspend fun changeFolderName(userId: Long, folderId: Long, name: String): NoteFolder?
+    suspend fun deleteNoteFolder(userId: Long, folderId: Long): NoteFolder?
+    suspend fun changeNoteFolder(userId: Long, noteId: Long, folderId: Long?): Note?
 }
 
 private class RepositoryImpl(
@@ -209,28 +209,29 @@ private class RepositoryImpl(
     }
 
     override suspend fun getNoteById(userId: Long, id: Long): Note? {
-        val noteBlocks = pgPool.useConnection { it.getNoteBlocksById(id) }.map { it.toNoteBlock() }
+// TODO: get note and blocks in one transaction.
         val note = pgPool.useConnection { it.getNoteById(userId, id) }?.toNote()
+        val noteBlocks = pgPool.useConnection { it.getNoteBlocksById(userId, id) }.map { it.toNoteBlock() }
         return note?.copy(blocks = noteBlocks.toMutableList())
     }
 
-    override suspend fun getNoteFolderByNoteId(noteId: Long): NoteFolder? {
+    override suspend fun getNoteFolderByNoteId(userId: Long, noteId: Long): NoteFolder? {
         return pgPool.useConnection {
-            noteWithFolderToFolderModels(it.getNoteFolderByNoteId(noteId)).firstOrNull()
+            noteWithFolderToFolderModels(it.getNoteFolderByNoteId(userId, noteId)).firstOrNull()
         }
     }
 
-    override suspend fun getNoteBlocksFlow(id: Long): Flow<NoteBlock> {
-        return pgPool.useConnection { it.getNoteBlocksFlow(id).map { it.toNoteBlock() } }
+    override suspend fun getNoteBlocksFlow(userId: Long, id: Long): Flow<NoteBlock> {
+        return pgPool.useConnection { it.getNoteBlocksFlow(userId, id).map { it.toNoteBlock() } }
     }
 
-    override suspend fun changeNoteTitleById(id: Long, title: String): Note? {
-        return pgPool.useConnection { it.changeNoteTitle(id, title) }?.toNote()
+    override suspend fun changeNoteTitleById(userId: Long, id: Long, title: String): Note? {
+        return pgPool.useConnection { it.changeNoteTitle(userId, id, title) }?.toNote()
     }
 
-    override suspend fun deleteNoteById(id: Long) {
+    override suspend fun deleteNoteById(userId: Long, id: Long) {
         pgPool.useConnection { c ->
-            val imageUrls = c.getNoteBlocksById(id).mapNotNull { it.imageUrl }
+            val imageUrls = c.getNoteBlocksById(userId, id).mapNotNull { it.imageUrl }
             c.deleteNoteById(id)
 
             imageUrls.forEach { removeFile(imageUrlToLocalPath(it)) }
@@ -238,15 +239,17 @@ private class RepositoryImpl(
     }
 
     override suspend fun addBlockAfter(
+        userId: Long,
         noteId: Long,
         blockId: Long?,
         type: BlockType
-    ): NoteBlock {
-        val block = pgPool.useConnection { it.createBlockAfter(noteId, type.toEntityType(), blockId) }
-        return block.toNoteBlock()
+    ): NoteBlock? {
+        val block = pgPool.useConnection { it.createBlockAfter(userId, noteId, type.toEntityType(), blockId) }
+        return block?.toNoteBlock()
     }
 
     override suspend fun updateNoteBlock(
+        userId: Long,
         noteId: Long,
         blockId: Long,
         type: BlockType,
@@ -255,74 +258,78 @@ private class RepositoryImpl(
     ): NoteBlock? {
         val block = pgPool.useConnection { c ->
             if (type == BlockType.TASK_LIST_ITEM) {
-                c.updateNoteBlock(noteId, blockId, type.toEntityType(), textContent, checked = extra == true)
+                c.updateNoteBlock(userId, noteId, blockId, type.toEntityType(), textContent, checked = extra == true)
             } else {
-                c.updateNoteBlock(noteId, blockId, type.toEntityType(), textContent)
+                c.updateNoteBlock(userId, noteId, blockId, type.toEntityType(), textContent)
             }
         }
         return block?.toNoteBlock()
     }
 
-    override suspend fun deleteBlock(noteId: Long, noteBlockId: Long) {
-        val deletedUrl = pgPool.useConnection { it.deleteBlockById(noteId, noteBlockId) }
+    override suspend fun deleteBlock(userId: Long, noteId: Long, noteBlockId: Long) {
+        val deletedUrl = pgPool.useConnection { it.deleteBlockById(userId, noteId, noteBlockId) }
         if (deletedUrl != null) {
             removeFile(imageUrlToLocalPath(deletedUrl))
         }
     }
 
     override suspend fun saveImageToImageBlock(
+        userId: Long,
         noteId: Long,
         noteBlockId: Long,
         fileSource: AsyncRawSource
     ): NoteBlock.Image? {
-        val oldBlock = pgPool.useConnection { it.getNoteBlocksByNoteBlockId(noteBlockId) }
+        val oldBlock = pgPool.useConnection { it.getNoteBlocksByNoteBlockId(userId, noteBlockId) }
         if (oldBlock?.type != "image") return null
 
         val newImageUrl = saveImageAndRemoveOldIfNotNull(fileSource, oldBlock.imageUrl)
 
-        return pgPool.useConnection { it.updateImageBlock(noteId, noteBlockId, newImageUrl) }
+        return pgPool.useConnection { it.updateImageBlock(userId,noteId, noteBlockId, newImageUrl) }
             ?.toNoteBlock() as? NoteBlock.Image
     }
 
     override suspend fun saveImageAndChangeBlockTypeToImage(
+        userId: Long,
         noteId: Long,
         noteBlockId: Long,
         fileSource: AsyncRawSource
     ): NoteBlock.Image? {
-        val oldBlock = pgPool.useConnection { it.getNoteBlocksByNoteBlockId(noteBlockId) }
+        val oldBlock = pgPool.useConnection { it.getNoteBlocksByNoteBlockId(userId, noteBlockId) }
         if (oldBlock == null) return null
 
         val newImageUrl = saveImageAndRemoveOldIfNotNull(fileSource, oldBlock.imageUrl)
 
-        return pgPool.useConnection { it.saveImageToBlockAndChangeTypeToImage(noteId, noteBlockId, newImageUrl) }
+        return pgPool.useConnection { it.saveImageToBlockAndChangeTypeToImage(userId, noteId, noteBlockId, newImageUrl) }
             ?.toNoteBlock() as? NoteBlock.Image
     }
 
     override suspend fun saveTextToTextBlock(
+        userId: Long,
         noteId: Long,
         noteBlockId: Long,
         content: String
     ): NoteBlock.Text? {
-        val block = pgPool.useConnection { it.updateContentForTextBlock(noteId, noteBlockId, content) }
+        val block = pgPool.useConnection { it.updateContentForTextBlock(userId, noteId, noteBlockId, content) }
             ?.toNoteBlock() as? NoteBlock.Text
         return block
     }
 
     override suspend fun saveCheckedToTaskListItemBlock(
+        userId: Long,
         noteId: Long,
         noteBlockId: Long,
         checked: Boolean
     ): NoteBlock.TaskListItem? {
-        val oldBlock = pgPool.useConnection { it.getNoteBlocksByNoteBlockId(noteBlockId) }
+        val oldBlock = pgPool.useConnection { it.getNoteBlocksByNoteBlockId(userId, noteBlockId) }
         if (oldBlock == null) return null
 
-        return pgPool.useConnection { it.saveCheckedToBlock(noteId, noteBlockId, checked) }
+        return pgPool.useConnection { it.saveCheckedToBlock(userId, noteId, noteBlockId, checked) }
             ?.toNoteBlock() as? NoteBlock.TaskListItem
     }
 
-    override suspend fun getNoteFolderById(folderId: Long): NoteFolder? {
+    override suspend fun getNoteFolderById(userId: Long, folderId: Long): NoteFolder? {
         return pgPool.useConnection {
-            noteWithFolderToFolderModels(it.getNoteFolderById(folderId)).firstOrNull()
+            noteWithFolderToFolderModels(it.getNoteFolderById(userId, folderId)).firstOrNull()
         }
     }
 
@@ -330,18 +337,18 @@ private class RepositoryImpl(
         return pgPool.useConnection { it.createNewNoteFolder(userId, folderName) }.toFolder()
     }
 
-    override suspend fun changeFolderName(folderId: Long, name: String): NoteFolder? {
+    override suspend fun changeFolderName(userId: Long, folderId: Long, name: String): NoteFolder? {
         return pgPool.useConnection {
-            noteWithFolderToFolderModels(it.changeNoteFolderName(folderId, name)).firstOrNull()
+            noteWithFolderToFolderModels(it.changeNoteFolderName(userId, folderId, name)).firstOrNull()
         }
     }
 
-    override suspend fun deleteNoteFolder(folderId: Long): NoteFolder? {
-        return pgPool.useConnection { it.deleteNoteFolder(folderId)?.toFolder() }
+    override suspend fun deleteNoteFolder(userId: Long, folderId: Long): NoteFolder? {
+        return pgPool.useConnection { it.deleteNoteFolder(userId, folderId)?.toFolder() }
     }
 
-    override suspend fun changeNoteFolder(noteId: Long, folderId: Long?): Note? {
-        return pgPool.useConnection { it.changeNoteFolder(noteId, folderId)?.toNote() }
+    override suspend fun changeNoteFolder(userId: Long, noteId: Long, folderId: Long?): Note? {
+        return pgPool.useConnection { it.changeNoteFolder(userId, noteId, folderId)?.toNote() }
     }
 }
 

@@ -97,23 +97,24 @@ class MockRepositoryImpl : Repository {
         return findNote(id)?.snapshot()
     }
 
-    override suspend fun getNoteFolderByNoteId(noteId: Long): NoteFolder? {
+    override suspend fun getNoteFolderByNoteId(userId: Long, noteId: Long): NoteFolder? {
         return folders.firstOrNull { it.noteIds.any { it == noteId} }?.snapshot()
     }
 
-    override suspend fun getNoteBlocksFlow(id: Long): Flow<NoteBlock> {
+    override suspend fun getNoteBlocksFlow(userId: Long, id: Long): Flow<NoteBlock> {
         return flow {
             findNote(id)?.blocks?.toList().orEmpty().forEach { emit(it) }
         }
     }
 
-    override suspend fun changeNoteTitleById(id: Long, title: String): Note? {
+    override suspend fun changeNoteTitleById(userId: Long, id: Long, title: String): Note? {
         val note = findNote(id) ?: return null
         note.title = title
         return note.snapshot()
     }
 
     override suspend fun changeNoteFolder(
+        userId: Long,
         noteId: Long,
         folderId: Long?
     ): Note? {
@@ -133,7 +134,7 @@ class MockRepositoryImpl : Repository {
         return note.snapshot()
     }
 
-    override suspend fun deleteNoteById(id: Long) {
+    override suspend fun deleteNoteById(userId: Long, id: Long) {
         val index = notes.indexOfFirst { it.id == id }
         if (index == -1) return
 
@@ -142,6 +143,7 @@ class MockRepositoryImpl : Repository {
     }
 
     override suspend fun addBlockAfter(
+        userId: Long,
         noteId: Long,
         blockId: Long?,
         type: BlockType
@@ -158,6 +160,7 @@ class MockRepositoryImpl : Repository {
     }
 
     override suspend fun updateNoteBlock(
+        userId: Long,
         noteId: Long,
         blockId: Long,
         type: BlockType,
@@ -175,7 +178,7 @@ class MockRepositoryImpl : Repository {
         return newBlock
     }
 
-    override suspend fun deleteBlock(noteId: Long, noteBlockId: Long) {
+    override suspend fun deleteBlock(userId: Long, noteId: Long, noteBlockId: Long) {
         val note = findNote(noteId) ?: return
 
         val blockIndex = note.blocks.indexOfFirst { it.blockId == noteBlockId }
@@ -191,6 +194,7 @@ class MockRepositoryImpl : Repository {
     }
 
     override suspend fun saveImageToImageBlock(
+        userId: Long,
         noteId: Long,
         noteBlockId: Long,
         fileSource: AsyncRawSource
@@ -208,6 +212,7 @@ class MockRepositoryImpl : Repository {
     }
 
     override suspend fun saveImageAndChangeBlockTypeToImage(
+        userId: Long,
         noteId: Long,
         noteBlockId: Long,
         fileSource: AsyncRawSource
@@ -225,6 +230,7 @@ class MockRepositoryImpl : Repository {
     }
 
     override suspend fun saveTextToTextBlock(
+        userId: Long,
         noteId: Long,
         noteBlockId: Long,
         content: String
@@ -240,6 +246,7 @@ class MockRepositoryImpl : Repository {
     }
 
     override suspend fun saveCheckedToTaskListItemBlock(
+        userId: Long,
         noteId: Long,
         noteBlockId: Long,
         checked: Boolean
@@ -254,7 +261,7 @@ class MockRepositoryImpl : Repository {
         return newBlock
     }
 
-    override suspend fun getNoteFolderById(folderId: Long): NoteFolder? {
+    override suspend fun getNoteFolderById(userId: Long, folderId: Long): NoteFolder? {
         return folders.firstOrNull { it.id == folderId }?.snapshot()
     }
 
@@ -265,6 +272,7 @@ class MockRepositoryImpl : Repository {
     }
 
     override suspend fun changeFolderName(
+        userId: Long,
         folderId: Long,
         name: String
     ): NoteFolder? {
@@ -273,7 +281,7 @@ class MockRepositoryImpl : Repository {
         return folder.snapshot()
     }
 
-    override suspend fun deleteNoteFolder(folderId: Long): NoteFolder? {
+    override suspend fun deleteNoteFolder(userId: Long, folderId: Long): NoteFolder? {
         val index = folders.indexOfFirst { it.id == folderId }
         if (index == -1) {
             return null

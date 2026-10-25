@@ -87,7 +87,7 @@ private suspend fun CallContext.handleGetNoteList() {
 context(repo: Repository)
 private suspend fun CallContext.handleNewNote() {
     val note = repo.createNewNoteForUser(requireSession().userId)
-    val noteBlock = repo.addBlockAfter(noteId = note.id, blockId = null, type = BlockType.TEXT)!!
+    val noteBlock = repo.addBlockAfter(userId = requireSession().userId, noteId = note.id, blockId = null, type = BlockType.TEXT)!!
     val newNote = note.copy(blocks = mutableListOf(noteBlock))
     respondHtml(
         configHeaders = {
@@ -115,7 +115,7 @@ private suspend fun CallContext.handleChangeTitle() {
         return
     }
 
-    val note = repo.changeNoteTitleById(id, newTitle)
+    val note = repo.changeNoteTitleById(userId = requireSession().userId, id, newTitle)
     if (note == null) {
         respond(HttpStatusCode.NotFound)
         return
@@ -136,7 +136,7 @@ private suspend fun CallContext.handleDeleteNote() {
     val idToDelete = requireNoteId()
     val currentNoteId = requestParameters["currentNoteId"]?.toLongOrNull()
 
-    repo.deleteNoteById(idToDelete)
+    repo.deleteNoteById(userId = requireSession().userId, idToDelete)
     if (currentNoteId != idToDelete) {
         respond(HttpStatusCode.OK)
         return
@@ -169,7 +169,7 @@ private suspend fun CallContext.handleGetNote() {
 context(repo: Repository)
 private suspend fun CallContext.handleChangeFolder() {
     val folderId = requestParameters["folderId"]?.toLongOrNull()
-    val note = repo.changeNoteFolder(requireNoteId(), folderId)
+    val note = repo.changeNoteFolder(userId = requireSession().userId, requireNoteId(), folderId)
     if (note == null) {
         respond(HttpStatusCode.NotFound)
         return
@@ -189,12 +189,13 @@ private suspend fun CallContext.handleChangeFolder() {
 context(repo: Repository)
 private suspend fun CallContext.handleGetMoveTargetFolders() {
     val noteId = requireNoteId()
-    val note = repo.getNoteById(requireSession().userId, noteId)
+    val userId = requireSession().userId
+    val note = repo.getNoteById(userId, noteId)
     if (note == null) {
         respond(HttpStatusCode.NotFound)
         return
     }
-    val noteFolder = repo.getNoteFolderByNoteId(noteId)
+    val noteFolder = repo.getNoteFolderByNoteId(userId, noteId)
     val excludedFolderIds = noteFolder?.id?.let { listOf(it) } ?: emptyList()
     val folders = repo.getAllNoteFolder(requireSession().userId, excludedFolderIds)
     respondHtml { moveTargetFolderList(noteId, folders) }
@@ -211,6 +212,7 @@ private suspend fun CallContext.handleAddFirstBlock() {
     }
 
     val block = repo.addBlockAfter(
+        userId = requireSession().userId,
         noteId = noteId,
         blockId = null,
         type = type,
@@ -241,7 +243,7 @@ private suspend fun CallContext.handleExportNote() {
         }
     ) { sink ->
         sink.writeZip {
-            writeMarkdownFolder(null, note, blocksGetter = { repo.getNoteBlocksFlow(it) })
+            writeMarkdownFolder(null, note, blocksGetter = { repo.getNoteBlocksFlow(userId = requireSession().userId, it) })
         }
     }
 }

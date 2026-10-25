@@ -68,7 +68,7 @@ private suspend fun CallContext.handleDeleteBlock() {
     val noteId = requireNoteId()
     val noteBlockId = requireBlockId()
 
-    repo.deleteBlock(noteId, noteBlockId)
+    repo.deleteBlock(userId = requireSession().userId, noteId, noteBlockId)
     respond(HttpStatusCode.OK)
 }
 
@@ -83,7 +83,7 @@ private suspend fun CallContext.handleChangeTextBlock() {
         return
     }
 
-    repo.saveTextToTextBlock(noteId, noteBlockId, content)
+    repo.saveTextToTextBlock(userId = requireSession().userId, noteId, noteBlockId, content)
     respond(HttpStatusCode.OK)
 }
 
@@ -106,7 +106,7 @@ private suspend fun CallContext.handleUploadImageBlock() {
         respond(HttpStatusCode.BadRequest)
         return
     }
-    val image = repo.saveImageToImageBlock(noteId, noteBlockId, imageFileSource)
+    val image = repo.saveImageToImageBlock(userId = requireSession().userId, noteId, noteBlockId, imageFileSource)
 
     if (image == null) {
         respond(HttpStatusCode.BadRequest)
@@ -138,7 +138,7 @@ private suspend fun CallContext.handlePasteImageToTextBlock() {
         return
     }
 
-    val image = repo.saveImageAndChangeBlockTypeToImage(noteId, noteBlockId, imageFileSource)
+    val image = repo.saveImageAndChangeBlockTypeToImage(userId = requireSession().userId, noteId, noteBlockId, imageFileSource)
 
     if (image == null) {
         respond(HttpStatusCode.BadRequest, "image save failed")
@@ -168,7 +168,7 @@ private suspend fun CallContext.handleAddBlockAfter() {
         return
     }
 
-    val newBlock = repo.addBlockAfter(noteId, noteBlockId, blockType)
+    val newBlock = repo.addBlockAfter(userId = requireSession().userId, noteId, noteBlockId, blockType)
     if (newBlock == null) {
         respond(HttpStatusCode.NotFound)
         return
@@ -184,7 +184,7 @@ private suspend fun CallContext.handleChangeCheckBox() {
     val noteId = requireNoteId()
     val noteBlockId = requireBlockId()
     val checked = receiveFormParameters()["check"].toBoolean()
-    val block = repo.saveCheckedToTaskListItemBlock(noteId, noteBlockId, checked)
+    val block = repo.saveCheckedToTaskListItemBlock(userId = requireSession().userId, noteId, noteBlockId, checked)
     if (block == null) {
         respond(HttpStatusCode.NotFound)
         return
@@ -213,7 +213,7 @@ private suspend fun CallContext.handleChangeTextBlockType() {
         return
     }
 
-    val block = repo.updateNoteBlock(noteId, noteBlockId, blockType, content, extra)
+    val block = repo.updateNoteBlock(userId = requireSession().userId, noteId, noteBlockId, blockType, content, extra)
     if (block == null) {
         respond(HttpStatusCode.NotFound)
         return
