@@ -185,6 +185,9 @@ function handleTitleKeyDown(event, input) {
 }
 
 function handleTextBlockKeyDown(event, input) {
+    if (event.isComposing) return
+    if (event.key === 'Enter' && event.shiftKey) return
+
     const noteId = input.dataset.noteId
     const blockId = input.dataset.blockId
     const currentBlock = getBlockContainer(input)
@@ -219,7 +222,6 @@ function handleTextBlockKeyDown(event, input) {
     if (
         needCheckEnterToClear &&
         event.key === 'Enter' &&
-        !event.shiftKey &&
         input.value === ''
     ) {
         event.preventDefault()
@@ -235,13 +237,7 @@ function handleTextBlockKeyDown(event, input) {
                 },
             }
         )
-
-        return
-    }
-
-    if (
-        event.key === 'Enter' && event.shiftKey
-    ) {
+    } else if (event.key === 'Enter') {
         event.preventDefault()
 
         addTextBlockAfter(
@@ -249,12 +245,7 @@ function handleTextBlockKeyDown(event, input) {
             noteId,
             blockId
         )
-
-        return
-    }
-
-    if (
-        !event.isComposing &&
+    } else if (
         event.key === 'ArrowUp' &&
         input.selectionStart === 0
     ) {
@@ -264,12 +255,7 @@ function handleTextBlockKeyDown(event, input) {
             event.preventDefault()
             focusPreviousBlock(input)
         }
-
-        return
-    }
-
-    if (
-        !event.isComposing &&
+    } else if (
         event.key === 'ArrowDown' &&
         input.selectionStart === input.value.length
     ) {
