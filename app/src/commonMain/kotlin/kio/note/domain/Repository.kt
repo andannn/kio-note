@@ -40,7 +40,6 @@ import kio.note.util.hashPassword
 import kio.note.util.removeFile
 import kio.note.util.saveFileToPath
 import kio.postgres.conn.PgConnectionPool
-import kio.postgres.conn.transaction
 import kio.postgres.conn.useConnection
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -140,7 +139,7 @@ interface Repository {
     suspend fun createNewNoteForUser(userId: Long): Note
     suspend fun getAllNoteFolder(userId: Long, excludedFolderIds: List<Long> = emptyList()): List<NoteFolder>
     suspend fun getAllNoteMetaData(userId: Long): List<Note>
-    suspend fun getNoteById(id: Long): Note?
+    suspend fun getNoteById(userId: Long, id: Long): Note?
     suspend fun getNoteFolderByNoteId(noteId: Long): NoteFolder?
     suspend fun getNoteBlocksFlow(id: Long): Flow<NoteBlock>
     suspend fun changeNoteTitleById(id: Long, title: String): Note?
@@ -209,9 +208,9 @@ private class RepositoryImpl(
         return pgPool.useConnection { it.getAllNote(userId) }.map { it.toNote() }
     }
 
-    override suspend fun getNoteById(id: Long): Note? {
+    override suspend fun getNoteById(userId: Long, id: Long): Note? {
         val noteBlocks = pgPool.useConnection { it.getNoteBlocksById(id) }.map { it.toNoteBlock() }
-        val note = pgPool.useConnection { it.getNoteById(id) }?.toNote()
+        val note = pgPool.useConnection { it.getNoteById(userId, id) }?.toNote()
         return note?.copy(blocks = noteBlocks.toMutableList())
     }
 

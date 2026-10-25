@@ -180,9 +180,13 @@ suspend fun PgConnection.changeNoteTitle(noteId: PgInt8, title: PgText): NotesEn
     ret.firstOrNull()
 }
 
-suspend fun PgConnection.getNoteById(noteId: PgInt8): NotesEntity? {
-    val ret: Flow<NotesEntity> = query("select * from notes where id = $1") {
+suspend fun PgConnection.getNoteById(userId: Long, noteId: PgInt8): NotesEntity? {
+    val ret: Flow<NotesEntity> = query("""
+        select * from notes 
+        where id = $1 and user_id = $2
+    """.trimIndent()) {
         param(noteId, PostgresInt8Serializer)
+        param(userId, PostgresInt8Serializer)
     }
     return ret.firstOrNull()
 }

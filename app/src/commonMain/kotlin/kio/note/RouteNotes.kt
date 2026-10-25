@@ -155,7 +155,7 @@ context(repo: Repository)
 private suspend fun CallContext.handleGetNote() {
     val id = requireNoteId()
 
-    val note = repo.getNoteById(id)
+    val note = repo.getNoteById(requireSession().userId, id)
     if (note == null) {
         respond(HttpStatusCode.NotFound)
         return
@@ -189,7 +189,7 @@ private suspend fun CallContext.handleChangeFolder() {
 context(repo: Repository)
 private suspend fun CallContext.handleGetMoveTargetFolders() {
     val noteId = requireNoteId()
-    val note = repo.getNoteById(noteId)
+    val note = repo.getNoteById(requireSession().userId, noteId)
     if (note == null) {
         respond(HttpStatusCode.NotFound)
         return
@@ -228,7 +228,7 @@ private suspend fun CallContext.handleAddFirstBlock() {
 
 context(repo: Repository)
 private suspend fun CallContext.handleExportNote() {
-    val note = repo.getNoteById(requireNoteId())
+    val note = repo.getNoteById(requireSession().userId, requireNoteId())
     if (note == null) {
         respond(HttpStatusCode.NotFound)
         return

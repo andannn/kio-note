@@ -93,7 +93,7 @@ class MockRepositoryImpl : Repository {
         return notes.map { it.snapshot() }
     }
 
-    override suspend fun getNoteById(id: Long): Note? {
+    override suspend fun getNoteById(userId: Long, id: Long): Note? {
         return findNote(id)?.snapshot()
     }
 

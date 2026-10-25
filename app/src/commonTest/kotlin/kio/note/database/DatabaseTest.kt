@@ -23,14 +23,14 @@ abstract class DatabaseTest {
     @Test
     fun getNoteByIdTest() = withTestPgDatabase {
         val note = createNoteForUser("new note", 1)
-        assertEquals("new note", getNoteById(note.id)?.title)
+        assertEquals("new note", getNoteById(1, note.id)?.title)
     }
 
     @Test
     fun deleteNoteByIdTest() = withTestPgDatabase {
         val note = createNoteForUser("new note", 1)
         deleteNoteById(note.id)
-        assertEquals(null, getNoteById(note.id))
+        assertEquals(null, getNoteById(1, note.id))
     }
 
     @Test
@@ -38,7 +38,7 @@ abstract class DatabaseTest {
         val note = createNoteForUser("new note", 1)
         val newNote = changeNoteTitle(note.id, "new title")
         assertEquals("new title", newNote?.title)
-        assertEquals("new title", getNoteById(note.id)?.title)
+        assertEquals("new title", getNoteById(1, note.id)?.title)
     }
 
     @Test
@@ -174,10 +174,10 @@ abstract class DatabaseTest {
     fun updateTimeUpdatedWhenInsertBlock() = withTestPgDatabase {
         val note = createNoteForUser("new note", 1)
         val block1 = createBlockAfter(note.id, "text", null)
-        val updateTime1 = getNoteById(note.id)!!.updateAt
+        val updateTime1 = getNoteById(1, note.id)!!.updateAt
 
         createBlockAfter(note.id, "text", block1.id)
-        val updateTime2 = getNoteById(note.id)!!.updateAt
+        val updateTime2 = getNoteById(1, note.id)!!.updateAt
 
         assertTrue { updateTime2 > updateTime1 }
     }

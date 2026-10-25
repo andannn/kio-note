@@ -30,10 +30,12 @@ suspend fun CoroutineScope.noteApp(serverSocket: ServerSocket) {
 
                 inject(AuthSession()) {
                     get("/") { call -> call.noteMainPage() }
+
                     notesRoute()
+
+                    staticResource("/attachments", "data/uploads")
                 }
 
-                staticResource("/attachments", "data/uploads")
                 staticResource("/", "resource")
             }
         }
