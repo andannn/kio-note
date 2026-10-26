@@ -22,7 +22,7 @@ data class NoteBlockEntity(
     @SerialName("image_url")
     val imageUrl: PgText?,
     @SerialName("checked")
-    val checked: PgBool = false,
+    val checked: PgBool,
 ) {
     companion object {
         const val BLOCK_TYPE_TEXT = "text"

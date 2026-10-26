@@ -1,6 +1,7 @@
 package kio.note.database
 
 import kio.postgres.types.PgInt8
+import kio.postgres.types.PgTimestampTz
 import kio.postgres.types.PgText
 import kio.postgres.conn.PgConnection
 import kio.postgres.conn.TransactionScope
@@ -187,15 +188,38 @@ suspend fun PgConnection.changeNoteTitle(userId: Long, noteId: PgInt8, title: Pg
     ret.firstOrNull()
 }
 
-suspend fun PgConnection.getNoteById(userId: Long, noteId: PgInt8): NotesEntity? {
-    val ret: Flow<NotesEntity> = query("""
-        select * from notes 
-        where id = $1 and user_id = $2
-    """.trimIndent()) {
+@Serializable
+data class NoteWithBlockRow(
+    val id: PgInt8,
+    val title: PgText,
+    val createAt: PgTimestampTz,
+    val updateAt: PgTimestampTz,
+    val userId: PgInt8,
+    val folderId: PgInt8?,
+    val blockId: PgInt8?,
+    val type: PgText?,
+    val sortOrder: PgInt8?,
+    val textContent: PgText?,
+    val imageUrl: PgText?,
+    val checked: PgBool?,
+)
+
+suspend fun PgConnection.getNoteByIdAndBlocks(userId: Long, noteId: PgInt8): List<NoteWithBlockRow> {
+    val rows = query<NoteWithBlockRow>(
+        """
+        select n.id, n.title, n.create_at, n.update_at, n.user_id, n.note_folder_id,
+               b.id as block_id, b.type, b.sort_order, b.text_content, b.image_url, b.checked
+        from notes n
+        left join note_blocks b on b.note_id = n.id
+        where n.id = $1 and n.user_id = $2
+        order by b.sort_order, b.id
+    """.trimIndent()
+    ) {
         param(noteId, PostgresInt8Serializer)
         param(userId, PostgresInt8Serializer)
     }
-    return ret.firstOrNull()
+
+    return rows.toList()
 }
 
 suspend fun PgConnection.getNoteBlocksByNoteBlockId(userId: Long, noteBlockId: PgInt8): NoteBlockEntity? = transaction { t ->
@@ -374,7 +398,7 @@ suspend fun PgConnection.deleteNoteFolder(userId: Long, folderId: Long): NoteFol
 suspend fun PgConnection.getAllNoteFolder(
     userId: Long,
     excludedFolderIds: List<Long>,
-): List<NoteWithFolderEntity> {
+): List<NoteWithFolderRow> {
     val excludeClause = if (excludedFolderIds.isEmpty()) {
         ""
     } else {
@@ -384,7 +408,7 @@ suspend fun PgConnection.getAllNoteFolder(
         "and note_folders.id not in ($placeholders)"
     }
 
-    val ret: Flow<NoteWithFolderEntity> = query("""
+    val ret: Flow<NoteWithFolderRow> = query("""
         select
             note_folders.id as folder_id,
             note_folders.folder_name as folder_name,
@@ -406,7 +430,7 @@ suspend fun PgConnection.getAllNoteFolder(
     return ret.toList()
 }
 
-suspend fun PgConnection.changeNoteFolderName(userId: Long, folderId: Long, folderName: String): List<NoteWithFolderEntity> {
+suspend fun PgConnection.changeNoteFolderName(userId: Long, folderId: Long, folderName: String): List<NoteWithFolderRow> {
     return transaction { t ->
         t.exec("""
             update note_folders
@@ -425,7 +449,7 @@ suspend fun PgConnection.changeNoteFolderName(userId: Long, folderId: Long, fold
 }
 
 @Serializable
-data class NoteWithFolderEntity(
+data class NoteWithFolderRow(
     @SerialName("folder_id")
     val folderId: PgInt8,
     @SerialName("folder_name")
@@ -436,14 +460,14 @@ data class NoteWithFolderEntity(
     val noteTitle: PgText?,
 )
 
-suspend fun PgConnection.getNoteFolderById(userId: Long, folderId: Long): List<NoteWithFolderEntity> {
+suspend fun PgConnection.getNoteFolderById(userId: Long, folderId: Long): List<NoteWithFolderRow> {
     return transaction { t ->
         t.getNoteFolderById(userId, folderId)
     }
 }
 
-private suspend fun TransactionScope.getNoteFolderById(userId: Long, folderId: Long): List<NoteWithFolderEntity> {
-    val ret: Flow<NoteWithFolderEntity> = query("""
+private suspend fun TransactionScope.getNoteFolderById(userId: Long, folderId: Long): List<NoteWithFolderRow> {
+    val ret: Flow<NoteWithFolderRow> = query("""
         select 
             note_folders.id as folder_id,
             note_folders.folder_name as folder_name,
@@ -461,8 +485,8 @@ private suspend fun TransactionScope.getNoteFolderById(userId: Long, folderId: L
     return ret.toList()
 }
 
-suspend fun PgConnection.getNoteFolderByNoteId(userId: Long, noteId: Long): List<NoteWithFolderEntity> {
-    val ret: Flow<NoteWithFolderEntity> = query("""
+suspend fun PgConnection.getNoteFolderByNoteId(userId: Long, noteId: Long): List<NoteWithFolderRow> {
+    val ret: Flow<NoteWithFolderRow> = query("""
         select 
             note_folders.id as folder_id,
             note_folders.folder_name as folder_name,

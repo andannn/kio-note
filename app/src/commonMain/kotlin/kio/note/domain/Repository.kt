@@ -7,7 +7,8 @@ import kio.http.trace
 import kio.note.database.NoteBlockEntity
 import kio.note.database.NoteFolderEntity
 import kio.note.database.NoteUserEntity
-import kio.note.database.NoteWithFolderEntity
+import kio.note.database.NoteWithBlockRow
+import kio.note.database.NoteWithFolderRow
 import kio.note.database.NotesEntity
 import kio.note.database.changeNoteFolder
 import kio.note.database.changeNoteFolderName
@@ -25,7 +26,7 @@ import kio.note.database.getAllNoteFolder
 import kio.note.database.getNoteBlocksById
 import kio.note.database.getNoteBlocksByNoteBlockId
 import kio.note.database.getNoteBlocksFlow
-import kio.note.database.getNoteById
+import kio.note.database.getNoteByIdAndBlocks
 import kio.note.database.getNoteFolderById
 import kio.note.database.getNoteFolderByNoteId
 import kio.note.database.getUserByUsername
@@ -91,7 +92,7 @@ data class NoteFolder(
 data class Note(
     val id: Long,
     val title: String,
-    val blocks: MutableList<NoteBlock> = mutableListOf(),
+    val blocks: List<NoteBlock> = listOf(),
 )
 
 sealed interface NoteBlock {
@@ -200,7 +201,7 @@ private class RepositoryImpl(
 
     override suspend fun getAllNoteFolder(userId: Long, excludedFolderIds: List<Long>): List<NoteFolder> {
         return pgPool.useConnection {
-            noteWithFolderToFolderModels(it.getAllNoteFolder(userId, excludedFolderIds))
+            noteWithFolderRowToModels(it.getAllNoteFolder(userId, excludedFolderIds))
         }
     }
 
@@ -209,15 +210,15 @@ private class RepositoryImpl(
     }
 
     override suspend fun getNoteById(userId: Long, id: Long): Note? {
-// TODO: get note and blocks in one transaction.
-        val note = pgPool.useConnection { it.getNoteById(userId, id) }?.toNote()
-        val noteBlocks = pgPool.useConnection { it.getNoteBlocksById(userId, id) }.map { it.toNoteBlock() }
-        return note?.copy(blocks = noteBlocks.toMutableList())
+        return pgPool.useConnection { connection ->
+            val result = connection.getNoteByIdAndBlocks(userId, id)
+            noteWithBlockRowToModels(result).firstOrNull()
+        }
     }
 
     override suspend fun getNoteFolderByNoteId(userId: Long, noteId: Long): NoteFolder? {
         return pgPool.useConnection {
-            noteWithFolderToFolderModels(it.getNoteFolderByNoteId(userId, noteId)).firstOrNull()
+            noteWithFolderRowToModels(it.getNoteFolderByNoteId(userId, noteId)).firstOrNull()
         }
     }
 
@@ -329,7 +330,7 @@ private class RepositoryImpl(
 
     override suspend fun getNoteFolderById(userId: Long, folderId: Long): NoteFolder? {
         return pgPool.useConnection {
-            noteWithFolderToFolderModels(it.getNoteFolderById(userId, folderId)).firstOrNull()
+            noteWithFolderRowToModels(it.getNoteFolderById(userId, folderId)).firstOrNull()
         }
     }
 
@@ -339,7 +340,7 @@ private class RepositoryImpl(
 
     override suspend fun changeFolderName(userId: Long, folderId: Long, name: String): NoteFolder? {
         return pgPool.useConnection {
-            noteWithFolderToFolderModels(it.changeNoteFolderName(userId, folderId, name)).firstOrNull()
+            noteWithFolderRowToModels(it.changeNoteFolderName(userId, folderId, name)).firstOrNull()
         }
     }
 
@@ -355,8 +356,8 @@ private class RepositoryImpl(
 private fun NoteUserEntity.toUser(): User = User(id = id, username = username, passwordHash = passwordHash)
 private fun NotesEntity.toNote(): Note = Note(id = id, title = title)
 private fun NoteFolderEntity.toFolder(notes: List<Note> = emptyList()): NoteFolder = NoteFolder(id = id, name = name, notes = notes)
-private fun noteWithFolderToFolderModels(
-    rows: List<NoteWithFolderEntity>,
+private fun noteWithFolderRowToModels(
+    rows: List<NoteWithFolderRow>,
 ): List<NoteFolder> =
     rows.groupBy { it.folderId }.map { (folderId, items) ->
         NoteFolder(
@@ -367,6 +368,27 @@ private fun noteWithFolderToFolderModels(
                 val title = item.noteTitle ?: return@mapNotNull null
                 Note(id = noteId, title = title)
             },
+        )
+    }
+
+private fun noteWithBlockRowToModels(
+    rows: List<NoteWithBlockRow>,
+): List<Note> =
+    rows.groupBy { it.id }.map { (noteId, items) ->
+        Note(
+            id = noteId,
+            title = items.first().title,
+            blocks = items.mapNotNull { item ->
+                NoteBlockEntity(
+                    id = item.blockId ?: return@mapNotNull null,
+                    noteId = noteId,
+                    type = item.type!!,
+                    sortOrder = item.sortOrder!!,
+                    textContent = item.textContent,
+                    imageUrl = item.imageUrl,
+                    checked = item.checked!!,
+                ).toNoteBlock()
+            }
         )
     }
 
