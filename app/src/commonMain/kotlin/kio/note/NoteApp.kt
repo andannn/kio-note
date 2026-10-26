@@ -1,5 +1,6 @@
 package kio.note
 
+import io.ktor.http.HttpHeaders
 import kio.async.io.ServerSocket
 import kio.async.io.getEnv
 import kio.http.*
@@ -33,10 +34,22 @@ suspend fun CoroutineScope.noteApp(serverSocket: ServerSocket) {
 
                     notesRoute()
 
-                    staticResource("/attachments", "data/uploads")
+                    staticResource(
+                        remotePath = "/attachments",
+                        basePackage = "data/uploads",
+                        configHeaders = {
+                            append(HttpHeaders.CacheControl, "public, max-age=31536000, immutable")
+                        }
+                    )
                 }
 
-                staticResource("/", "resource")
+                staticResource(
+                    remotePath = "/",
+                    basePackage = "resource",
+                    configHeaders = {
+                        append(HttpHeaders.CacheControl, "public, max-age=31536000, immutable")
+                    }
+                )
             }
         }
     }
