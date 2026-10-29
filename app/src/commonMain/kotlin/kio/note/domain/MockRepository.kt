@@ -15,6 +15,7 @@ class MockRepositoryImpl : Repository {
         val id: Long,
         var title: String,
         val blocks: MutableList<NoteBlock> = mutableListOf(),
+        val tags: MutableList<String> = mutableListOf(),
     )
 
     private data class MockFolder(
@@ -49,6 +50,7 @@ class MockRepositoryImpl : Repository {
         id = id,
         title = title,
         blocks = blocks.toMutableList(),
+        tags = tags.toList(),
     )
 
     private fun MockFolder.snapshot(): NoteFolder = NoteFolder(
@@ -105,6 +107,22 @@ class MockRepositoryImpl : Repository {
         return flow {
             findNote(id)?.blocks?.toList().orEmpty().forEach { emit(it) }
         }
+    }
+
+    override suspend fun addNoteTag(userId: Long, noteId: Long, tag: String): Note? {
+        val note = findNote(noteId) ?: return null
+        val normalized = tag.trim()
+        require(normalized.isNotEmpty() && normalized.length <= 40)
+        if (note.tags.none { it.equals(normalized, ignoreCase = true) }) {
+            note.tags.add(normalized)
+        }
+        return note.snapshot()
+    }
+
+    override suspend fun removeNoteTag(userId: Long, noteId: Long, tag: String): Note? {
+        val note = findNote(noteId) ?: return null
+        note.tags.removeAll { it.equals(tag.trim(), ignoreCase = true) }
+        return note.snapshot()
     }
 
     override suspend fun changeNoteTitleById(userId: Long, id: Long, title: String): Note? {

@@ -93,6 +93,7 @@ data class Note(
     val id: Long,
     val title: String,
     val blocks: List<NoteBlock> = listOf(),
+    val tags: List<String> = emptyList(),
 )
 
 sealed interface NoteBlock {
@@ -159,11 +160,23 @@ interface Repository {
     suspend fun changeFolderName(userId: Long, folderId: Long, name: String): NoteFolder?
     suspend fun deleteNoteFolder(userId: Long, folderId: Long): NoteFolder?
     suspend fun changeNoteFolder(userId: Long, noteId: Long, folderId: Long?): Note?
+
+    // tag
+    suspend fun addNoteTag(userId: Long, noteId: Long, tag: String): Note?
+    suspend fun removeNoteTag(userId: Long, noteId: Long, tag: String): Note?
 }
 
 private class RepositoryImpl(
     private val pgPool: PgConnectionPool,
 ) : Repository {
+    override suspend fun addNoteTag(userId: Long, noteId: Long, tag: String): Note? {
+        TODO("Database-backed note tags are not implemented")
+    }
+
+    override suspend fun removeNoteTag(userId: Long, noteId: Long, tag: String): Note? {
+        TODO("Database-backed note tags are not implemented")
+    }
+
     override suspend fun findUserByUsername(userName: String): User? {
         return pgPool.useConnection { it.getUserByUsername(userName) }?.toUser()
     }
