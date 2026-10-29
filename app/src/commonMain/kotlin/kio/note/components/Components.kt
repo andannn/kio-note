@@ -178,6 +178,7 @@ fun TagConsumer<*>.noteContent(note: Note, focusFirstBlock: Boolean) {
 
                 +note.title
             }
+            noteTags(note)
         }
 
         div(classes = "note-blocks") {
@@ -222,6 +223,49 @@ fun TagConsumer<*>.noteBlock(noteId: Long, block: NoteBlock, autoFocus: Boolean 
         }
 
         addBlockMenu(blockContainerId, noteId, block.blockId)
+    }
+}
+
+fun TagConsumer<*>.noteTags(note: Note) {
+    div(classes = "note-tags") {
+        id = "note-tags-${note.id}"
+        note.tags.forEach { tag ->
+            form(classes = "note-tag") {
+                hxDelete = "/notes/${note.id}/tags"
+                hxTarget = "#note-tags-${note.id}"
+                hxSwap = "outerHTML"
+                hiddenInput { name = "tag"; value = tag }
+                span(classes = "note-tag-name") { +"#$tag" }
+                button(type = ButtonType.submit, classes = "note-tag-remove") {
+                    attributes["aria-label"] = "Remove tag $tag"
+                    +"×"
+                }
+            }
+        }
+        button(type = ButtonType.button, classes = "note-tag-add") {
+            attributes["aria-label"] = "Add tag"
+            hxGet = "/notes/${note.id}/tags/editor"
+            hxTarget = "this"
+            hxSwap = "outerHTML"
+            +"+"
+        }
+    }
+}
+
+fun TagConsumer<*>.noteTagEditor(noteId: Long) {
+    div {
+        textInput(classes = "note-tag-input") {
+            name = "tag"
+            placeholder = "Tag name"
+            maxLength = "40"
+            autoComplete = "off"
+            attributes["aria-label"] = "New tag"
+            attributes["data-autofocus"] = "true"
+            hxPost = "/notes/$noteId/tags"
+            hxTrigger = "keydown[key=='Enter' && !isComposing], blur"
+            hxTarget = "#note-tags-$noteId"
+            hxSwap = "outerHTML"
+        }
     }
 }
 
