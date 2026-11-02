@@ -10,6 +10,7 @@ import kio.note.database.NoteUserEntity
 import kio.note.database.NoteWithBlockRow
 import kio.note.database.NoteWithFolderRow
 import kio.note.database.NotesEntity
+import kio.note.database.addNoteTagAndReturnUpdated
 import kio.note.database.changeNoteFolder
 import kio.note.database.changeNoteFolderName
 import kio.note.database.changeNoteTitle
@@ -31,6 +32,7 @@ import kio.note.database.getNoteFolderById
 import kio.note.database.getNoteFolderByNoteId
 import kio.note.database.getUserByUsername
 import kio.note.database.getUserIdBySessionId
+import kio.note.database.removeNoteTagAndReturnUpdated
 import kio.note.database.saveCheckedToBlock
 import kio.note.database.saveImageToBlockAndChangeTypeToImage
 import kio.note.database.updateContentForTextBlock
@@ -93,6 +95,7 @@ data class Note(
     val id: Long,
     val title: String,
     val blocks: List<NoteBlock> = listOf(),
+    val tags: List<String> = emptyList(),
 )
 
 sealed interface NoteBlock {
@@ -159,11 +162,23 @@ interface Repository {
     suspend fun changeFolderName(userId: Long, folderId: Long, name: String): NoteFolder?
     suspend fun deleteNoteFolder(userId: Long, folderId: Long): NoteFolder?
     suspend fun changeNoteFolder(userId: Long, noteId: Long, folderId: Long?): Note?
+
+    // tag
+    suspend fun addNoteTag(userId: Long, noteId: Long, tag: String): List<String>?
+    suspend fun removeNoteTag(userId: Long, noteId: Long, tag: String): List<String>?
 }
 
 private class RepositoryImpl(
     private val pgPool: PgConnectionPool,
 ) : Repository {
+    override suspend fun addNoteTag(userId: Long, noteId: Long, tag: String): List<String>? {
+        return pgPool.useConnection { it.addNoteTagAndReturnUpdated(userId, noteId, tag)?.values }
+    }
+
+    override suspend fun removeNoteTag(userId: Long, noteId: Long, tag: String): List<String>? {
+        return pgPool.useConnection { it.removeNoteTagAndReturnUpdated(userId, noteId, tag)?.values }
+    }
+
     override suspend fun findUserByUsername(userName: String): User? {
         return pgPool.useConnection { it.getUserByUsername(userName) }?.toUser()
     }

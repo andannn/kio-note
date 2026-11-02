@@ -1,5 +1,6 @@
 package kio.note.database
 
+import kio.postgres.types.PgArray
 import kio.postgres.types.PgBool
 import kio.postgres.types.PgInt8
 import kio.postgres.types.PgText
@@ -50,6 +51,8 @@ data class NotesEntity(
     val userId: PgInt8,
     @SerialName("note_folder_id")
     val folderId: PgInt8?,
+    @SerialName("tags")
+    val tags: PgArray<PgText>,
 )
 
 @Serializable

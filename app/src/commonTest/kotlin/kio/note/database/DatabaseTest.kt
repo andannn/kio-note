@@ -266,6 +266,18 @@ abstract class DatabaseTest {
         assertEquals("New Name", new.first().folderName)
     }
 
+    @Test
+    fun addAndGetTagsTest() = withTestPgDatabase {
+        val note = createNoteForUser("new note", 1)
+        addNoteTagAndReturnUpdated(1, note.id, "New tag").also {
+            assertEquals(listOf("New tag"), it?.values)
+        }
+
+        removeNoteTagAndReturnUpdated(1, note.id, "New tag").also {
+            assertEquals(listOf(), it?.values)
+        }
+    }
+
     fun withTestPgDatabase(
         block: suspend PgConnection.() -> Unit
     ) =

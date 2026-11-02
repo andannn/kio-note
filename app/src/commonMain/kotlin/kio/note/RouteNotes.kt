@@ -44,6 +44,12 @@ fun Route.notesRoute() {
 
                     noteBlockOperations()
                 }
+
+                route("tags") {
+                    get("editor") { call -> call.handleNoteTagEditor() }
+                    post { call -> call.handleAddNoteTag() }
+                    delete { call -> call.handleDeleteNoteTag() }
+                }
             }
         }
     }
@@ -246,4 +252,57 @@ private suspend fun CallContext.handleExportNote() {
             writeMarkdownFolder(null, note, blocksGetter = { repo.getNoteBlocksFlow(userId = requireSession().userId, it) })
         }
     }
+}
+
+context(repo: Repository)
+private suspend fun CallContext.handleAddNoteTag() {
+    val parameters = receiveFormParameters()
+    val tag = parameters["tag"]?.trim()
+    if (tag == null || tag.length > 40 || tag.isEmpty()) {
+        respond(HttpStatusCode.BadRequest)
+        return
+    }
+
+    val userId = requireSession().userId
+    val noteId = requireNoteId()
+
+    val result = repo.addNoteTag(userId, noteId, tag)
+
+    if (result == null) {
+        respond(HttpStatusCode.NotFound)
+        return
+    }
+
+    respondHtml { noteTags(noteId, result) }
+}
+
+context(repo: Repository)
+private suspend fun CallContext.handleDeleteNoteTag() {
+    val tag = requestParameters["tag"]?.trim()
+    if (tag == null || tag.length > 40 || tag.isEmpty()) {
+        respond(HttpStatusCode.BadRequest)
+        return
+    }
+
+    val userId = requireSession().userId
+    val noteId = requireNoteId()
+
+    val result = repo.removeNoteTag(userId, noteId, tag)
+
+    if (result == null) {
+        respond(HttpStatusCode.NotFound)
+        return
+    }
+
+    respondHtml { noteTags(noteId, result) }
+}
+
+context(repo: Repository)
+private suspend fun CallContext.handleNoteTagEditor() {
+    val noteId = requireNoteId()
+    if (repo.getNoteById(requireSession().userId, noteId) == null) {
+        respond(HttpStatusCode.NotFound)
+        return
+    }
+    respondHtml { noteTagEditor(noteId) }
 }

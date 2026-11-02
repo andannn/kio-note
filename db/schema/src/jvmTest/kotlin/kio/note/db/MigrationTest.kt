@@ -83,6 +83,11 @@ class MigrationTest {
         assertIs<MigrationResult.Success>(migrate(migrations, targetVersion = 4))
     }
 
+    @Test
+    fun migrateFromVer4To5() = withTestPgDatabase {
+        assertIs<MigrationResult.Success>(migrate(migrations, targetVersion = 4))
+        assertIs<MigrationResult.Success>(migrate(migrations, targetVersion = 5))
+    }
 
     fun withTestPgDatabase(
         block: suspend PgConnection.() -> Unit

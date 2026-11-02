@@ -8,6 +8,7 @@ import kio.postgres.conn.TransactionScope
 import kio.postgres.conn.param
 import kio.postgres.conn.query
 import kio.postgres.conn.transaction
+import kio.postgres.types.PgArray
 import kio.postgres.types.PgBool
 import kio.postgres.types.PostgresBoolSerializer
 import kio.postgres.types.PostgresInt8Serializer
@@ -99,7 +100,7 @@ suspend fun PgConnection.createNoteForUser(title: PgText, userId: Long): NotesEn
         """
             insert into notes(title, user_id)
             values ($1, $2)
-            returning id, title, create_at, update_at, user_id, note_folder_id
+            returning id, title, create_at, update_at, user_id, note_folder_id, tags
         """.trimIndent()
     ) {
         param(title, PostgresTextSerializer)
@@ -140,7 +141,9 @@ suspend fun PgConnection.createBlockAfter(
 }
 
 suspend fun PgConnection.getAllNote(userId: Long): List<NotesEntity> {
-    val ret: Flow<NotesEntity> = query("select * from notes where user_id = $1 order by update_at desc") {
+    val ret: Flow<NotesEntity> = query("""
+        select * from notes where user_id = $1 order by update_at desc
+    """.trimIndent()) {
         param(userId, PostgresInt8Serializer)
     }
     val list = mutableListOf<NotesEntity>()
@@ -177,7 +180,7 @@ suspend fun PgConnection.changeNoteTitle(userId: Long, noteId: PgInt8, title: Pg
         update notes
         set title = $2, update_at = now()
         where id = $1 and user_id = $3
-        returning id, title, create_at, update_at, user_id, note_folder_id
+        returning id, title, create_at, update_at, user_id, note_folder_id, tags
         """.trimIndent()
     ) {
         param(noteId, PostgresInt8Serializer)
@@ -196,6 +199,7 @@ data class NoteWithBlockRow(
     val updateAt: PgTimestampTz,
     val userId: PgInt8,
     val folderId: PgInt8?,
+    val tags: PgArray<PgText>,
     val blockId: PgInt8?,
     val type: PgText?,
     val sortOrder: PgInt8?,
@@ -207,7 +211,7 @@ data class NoteWithBlockRow(
 suspend fun PgConnection.getNoteByIdAndBlocks(userId: Long, noteId: PgInt8): List<NoteWithBlockRow> {
     val rows = query<NoteWithBlockRow>(
         """
-        select n.id, n.title, n.create_at, n.update_at, n.user_id, n.note_folder_id,
+        select n.id, n.title, n.create_at, n.update_at, n.user_id, n.note_folder_id, n.tags,
                b.id as block_id, b.type, b.sort_order, b.text_content, b.image_url, b.checked
         from notes n
         left join note_blocks b on b.note_id = n.id
@@ -372,7 +376,7 @@ suspend fun PgConnection.changeNoteFolder(userId: Long, noteId: Long, folderId: 
         set
             note_folder_id = $1
         where id = $2 and user_id = $3
-        returning id, title, create_at, update_at, user_id, note_folder_id 
+        returning id, title, create_at, update_at, user_id, note_folder_id, tags 
     """.trimIndent()) {
         param(folderId, PostgresInt8Serializer.nullable)
         param(noteId, PostgresInt8Serializer)
@@ -464,6 +468,76 @@ suspend fun PgConnection.getNoteFolderById(userId: Long, folderId: Long): List<N
     return transaction { t ->
         t.getNoteFolderById(userId, folderId)
     }
+}
+
+suspend fun PgConnection.removeNoteTagAndReturnUpdated(userId: Long, noteId: Long, tag: String): PgArray<PgText>? = transaction { t ->
+    if (!t.noteBelongsToUser(userId, noteId)) return@transaction null
+
+    val normalized = tag.trim()
+
+    @Serializable class Tags(val value: PgArray<PgText>)
+    val ret: Flow<Tags> = t.query<Tags>(
+        """
+        select tags from notes where id = $1 limit 1
+        """.trimIndent()
+    ) {
+        param(noteId, PostgresInt8Serializer)
+    }
+
+    val tags = ret.firstOrNull()?.value ?: return@transaction null
+    if (!tags.values.contains(normalized)) return@transaction null
+
+    val ret2: Flow<Tags> = t.query<Tags>(
+        """
+        update notes
+        set tags = array_remove(tags, $2)
+        where id = $1 and user_id = $3
+        returning tags
+        """.trimIndent()
+    ) {
+        param(noteId, PostgresInt8Serializer)
+        param(normalized, PostgresTextSerializer)
+        param(userId, PostgresInt8Serializer)
+    }
+
+    val retTags = ret2.firstOrNull()?.value ?: return@transaction null
+
+    t.touchNote(noteId)
+    retTags
+}
+
+suspend fun PgConnection.addNoteTagAndReturnUpdated(userId: Long, noteId: Long, tag: String): PgArray<PgText>? = transaction { t ->
+    if (!t.noteBelongsToUser(userId, noteId)) return@transaction null
+
+    val normalized = tag.trim()
+
+    @Serializable class Tags(val value: PgArray<PgText>)
+    val ret: Flow<Tags> = t.query<Tags>(
+        """
+        select tags from notes where id = $1 limit 1
+        """.trimIndent()
+    ) {
+        param(noteId, PostgresInt8Serializer)
+    }
+
+    val tags = ret.firstOrNull()?.value ?: return@transaction null
+    if (tags.values.contains(normalized)) return@transaction null
+
+    val ret2: Flow<Tags> = t.query<Tags>("""
+        update notes
+        set tags = array_append(tags, $2)
+        where id = $1 and user_id = $3
+        returning tags
+    """.trimIndent()) {
+        param(noteId, PostgresInt8Serializer)
+        param(normalized, PostgresTextSerializer)
+        param(userId, PostgresInt8Serializer)
+    }
+
+    val retTags = ret2.firstOrNull()?.value ?: return@transaction null
+
+    t.touchNote(noteId)
+    retTags
 }
 
 private suspend fun TransactionScope.getNoteFolderById(userId: Long, folderId: Long): List<NoteWithFolderRow> {

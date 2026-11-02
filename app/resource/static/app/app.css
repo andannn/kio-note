@@ -313,14 +313,13 @@ hr {
 
 .note-header {
     display: flex;
-    align-items: flex-start;
-    gap: 16px;
+    flex-direction: column;
+    align-items: stretch;
     margin-bottom: 28px;
 }
 
-.note-header .note-title {
-    flex: 1;
-    min-width: 0;
+.note-header .note-tags {
+    margin-top: 12px;
 }
 
 .note-title {
@@ -961,4 +960,47 @@ hr {
     padding: 8px 10px;
     color: var(--text-secondary);
     font-size: 13px;
+}
+
+/* Note tags */
+.note-tags, .note-tag {
+    display: flex;
+    align-items: center;
+}
+
+.note-tags {
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.note-tag { position: relative; margin: 0; max-width: calc(100% - 18px); }
+.note-tag-name { min-width: 0; overflow-wrap: anywhere; }
+
+.note-tag-input, .note-tag-remove, .note-tag-add {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    padding: 4px 0;
+}
+
+.note-tag-input { width: 90px; min-width: 0; }
+.note-tag-input::placeholder { color: var(--text-muted); }
+.note-tag-remove, .note-tag-add { cursor: pointer; width: 14px; flex-shrink: 0; }
+.note-tag-remove {
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0;
+    pointer-events: none;
+}
+.note-tag:hover .note-tag-remove,
+.note-tag:focus-within .note-tag-remove { opacity: 1; pointer-events: auto; }
+.note-tag:hover, .note-tag-add:hover { color: var(--text-primary); }
+
+@media (hover: none) {
+    .note-tag-remove { opacity: 1; pointer-events: auto; }
 }
