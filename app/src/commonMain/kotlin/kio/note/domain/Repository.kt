@@ -393,6 +393,7 @@ private fun noteWithBlockRowToModels(
         Note(
             id = noteId,
             title = items.first().title,
+            tags = items.first().tags.values,
             blocks = items.mapNotNull { item ->
                 NoteBlockEntity(
                     id = item.blockId ?: return@mapNotNull null,
