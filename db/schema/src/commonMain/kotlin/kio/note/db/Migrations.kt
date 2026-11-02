@@ -8,6 +8,7 @@ val migrations get() = listOf(
     migration_2,
     migration_3,
     migration_4,
+    migration_5,
 )
 
 suspend fun PgConnection.dropAllTables() {
@@ -128,4 +129,13 @@ foreign key (note_folder_id)
 references note_folders(id)
 on delete set null;
 """.trimIndent()
+)
+
+val migration_5 = Migration(
+    version = 5,
+    name = "migration_5",
+    sql = """
+alter table notes
+add column tags text[] not null default '{}';
+    """.trimIndent()
 )
