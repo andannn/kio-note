@@ -470,10 +470,75 @@ suspend fun PgConnection.getNoteFolderById(userId: Long, folderId: Long): List<N
     }
 }
 
-//suspend fun PgConnection.addNoteTag(userName: String): NoteUserEntity? = transaction { t ->
-//
-//}
+suspend fun PgConnection.removeNoteTagAndReturnUpdated(userId: Long, noteId: Long, tag: String): PgArray<PgText>? = transaction { t ->
+    if (!t.noteBelongsToUser(userId, noteId)) return@transaction null
 
+    val normalized = tag.trim()
+
+    @Serializable class Tags(val value: PgArray<PgText>)
+    val ret: Flow<Tags> = t.query<Tags>(
+        """
+        select tags from notes where id = $1 limit 1
+        """.trimIndent()
+    ) {
+        param(noteId, PostgresInt8Serializer)
+    }
+
+    val tags = ret.firstOrNull()?.value ?: return@transaction null
+    if (!tags.values.contains(normalized)) return@transaction null
+
+    val ret2: Flow<Tags> = t.query<Tags>(
+        """
+        update notes
+        set tags = array_remove(tags, $2)
+        where id = $1 and user_id = $3
+        returning tags
+        """.trimIndent()
+    ) {
+        param(noteId, PostgresInt8Serializer)
+        param(normalized, PostgresTextSerializer)
+        param(userId, PostgresInt8Serializer)
+    }
+
+    val retTags = ret2.firstOrNull()?.value ?: return@transaction null
+
+    t.touchNote(noteId)
+    retTags
+}
+
+suspend fun PgConnection.addNoteTagAndReturnUpdated(userId: Long, noteId: Long, tag: String): PgArray<PgText>? = transaction { t ->
+    if (!t.noteBelongsToUser(userId, noteId)) return@transaction null
+
+    val normalized = tag.trim()
+
+    @Serializable class Tags(val value: PgArray<PgText>)
+    val ret: Flow<Tags> = t.query<Tags>(
+        """
+        select tags from notes where id = $1 limit 1
+        """.trimIndent()
+    ) {
+        param(noteId, PostgresInt8Serializer)
+    }
+
+    val tags = ret.firstOrNull()?.value ?: return@transaction null
+    if (tags.values.contains(normalized)) return@transaction null
+
+    val ret2: Flow<Tags> = t.query<Tags>("""
+        update notes
+        set tags = array_append(tags, $2)
+        where id = $1 and user_id = $3
+        returning tags
+    """.trimIndent()) {
+        param(noteId, PostgresInt8Serializer)
+        param(normalized, PostgresTextSerializer)
+        param(userId, PostgresInt8Serializer)
+    }
+
+    val retTags = ret2.firstOrNull()?.value ?: return@transaction null
+
+    t.touchNote(noteId)
+    retTags
+}
 
 private suspend fun TransactionScope.getNoteFolderById(userId: Long, folderId: Long): List<NoteWithFolderRow> {
     val ret: Flow<NoteWithFolderRow> = query("""
