@@ -50,14 +50,7 @@ private suspend fun CallContext.handleRegister() {
         configHeaders = {
             append("HX-Redirect", "/")
             appendCookie(
-                Cookie(
-                    "session",
-                    sessionId,
-                    httpOnly = true,
-                    path = "/",
-                    secure = true,
-                    extensions = mapOf("SameSite" to "Lax")
-                )
+                sessionCookie(sessionId)
             )
         }
     )
@@ -90,14 +83,7 @@ private suspend fun CallContext.handleLogin() {
         configHeaders = {
             append("HX-Redirect", "/")
             appendCookie(
-                Cookie(
-                    "session",
-                    sessionId,
-                    httpOnly = true,
-                    path = "/",
-                    secure = true,
-                    extensions = mapOf("SameSite" to "Lax")
-                )
+                sessionCookie(sessionId)
             )
         }
     )

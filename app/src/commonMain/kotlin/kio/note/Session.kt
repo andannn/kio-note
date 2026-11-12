@@ -12,6 +12,15 @@ import kotlinx.coroutines.withContext
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
 
+internal fun sessionCookie(sessionId: String) = io.ktor.http.Cookie(
+    "session", sessionId,
+    maxAge = 30 * 24 * 60 * 60,
+    httpOnly = true,
+    path = "/",
+    secure = true,
+    extensions = mapOf("SameSite" to "Lax")
+)
+
 suspend fun requireSession(): Session =
     checkNotNull(currentCoroutineContext()[CoroutineSession]?.session)
 

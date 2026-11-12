@@ -1,5 +1,8 @@
 package kio.note.page
 
+import kio.http.appendCookie
+import kio.http.requestCookies
+import kio.note.sessionCookie
 import kio.http.CallContext
 import kio.http.currentLogger
 import kio.http.info
@@ -35,7 +38,10 @@ fun TagConsumer<*>.kNoteHead(title: String) {
 
 suspend fun CallContext.noteMainPage(noteId: Long? = null) {
     currentLogger().info("respond Main Page: noteId=$noteId")
-    respondHtml {
+    val sessionId = checkNotNull(requestCookies()["session"])
+    respondHtml(configHeaders = {
+        appendCookie(sessionCookie(sessionId))
+    }) {
         kNoteHead("Knote")
 
         body(classes = "app") {
