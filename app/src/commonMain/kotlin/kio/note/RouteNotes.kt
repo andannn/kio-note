@@ -14,6 +14,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.html.div
 import kotlinx.html.id
 import kotlinx.html.ul
+import kotlinx.html.title
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
 
@@ -168,6 +169,7 @@ private suspend fun CallContext.handleGetNote() {
     }
 
     respondHtml {
+        title { +"${note.title} - Knote" }
         noteContent(note, focusFirstBlock = false)
     }
 }
