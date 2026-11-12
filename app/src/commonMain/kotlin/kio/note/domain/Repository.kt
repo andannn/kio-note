@@ -17,6 +17,7 @@ import kio.note.database.changeNoteTitle
 import kio.note.database.createBlockAfter
 import kio.note.database.createNewNoteFolder
 import kio.note.database.createNoteForUser
+import kio.note.database.deleteSession
 import kio.note.database.createSession
 import kio.note.database.createUser
 import kio.note.database.deleteBlockById
@@ -136,6 +137,7 @@ interface Repository {
     suspend fun findUserByUsername(userName: String): User?
     suspend fun verifyPassword(user: User, password: String): Boolean
     suspend fun createSession(userId: Long): String
+    suspend fun deleteSession(sessionId: String)
     suspend fun getSessionById(sessionId: String): Session?
     suspend fun createUser(userName: String, password: String): User?
 
@@ -198,6 +200,10 @@ private class RepositoryImpl(
 
     private fun generateSessionId(): String {
         return Uuid.random().toString()
+    }
+
+    override suspend fun deleteSession(sessionId: String) {
+        pgPool.useConnection { it.deleteSession(sessionId) }
     }
 
     override suspend fun getSessionById(sessionId: String): Session? {

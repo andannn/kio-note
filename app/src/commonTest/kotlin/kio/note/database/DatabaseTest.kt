@@ -162,6 +162,14 @@ abstract class DatabaseTest {
     }
 
     @Test
+    fun deleteSessionTest() = withTestPgDatabase {
+        val user = createUser("logout-user", "pass")!!
+        createSession(user.id, "current-session")
+        deleteSession("current-session")
+        assertNull(getUserIdBySessionId("current-session"))
+    }
+
+    @Test
     fun changeTextBlockTypeAndContentTest() = withTestPgDatabase {
         val note = createNoteForUser("new note", 1)
         val block1 =  createBlockAfter(1, note.id, "text", null)!!

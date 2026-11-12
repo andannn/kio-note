@@ -41,8 +41,9 @@ fun TagConsumer<*>.noteAsideMenu(selectedNoteId: Long? = null) {
             }
         }
 
-        hr {}
+    }
 
+    div(classes = "sidebar-content") {
         section(classes = "sidebar-folders") {
             hxGet = "/notes/folders"
             hxTrigger = "load"
@@ -69,6 +70,21 @@ fun TagConsumer<*>.noteAsideMenu(selectedNoteId: Long? = null) {
             ul {
                 id = noteListId
             }
+        }
+    }
+
+    div(classes = "sidebar-footer") {
+        button(classes = "logout-button") {
+            type = ButtonType.button
+            hxPost = "/logout"
+            hxSwap = "none"
+            span(classes = "logout-icon") {
+                attributes["aria-hidden"] = "true"
+                unsafe {
+                    raw("""<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H5v14h4M14 8l4 4-4 4M9 12h9"/></svg>""")
+                }
+            }
+            +"Logout"
         }
     }
 }

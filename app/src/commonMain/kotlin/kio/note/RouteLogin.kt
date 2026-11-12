@@ -14,6 +14,8 @@ fun Route.notesLogin() {
         post { call -> call.handleRegister() }
     }
 
+    post("logout") { call -> call.handleLogout() }
+
     route("login") {
         get { call -> call.noteLoginPage() }
         post { call -> call.handleLogin() }
@@ -87,6 +89,15 @@ private suspend fun CallContext.handleLogin() {
             )
         }
     )
+}
+
+context(repo: Repository)
+private suspend fun CallContext.handleLogout() {
+    requestCookies()["session"]?.let { repo.deleteSession(it) }
+    respond(HttpStatusCode.OK, configHeaders = {
+        appendCookie(sessionCookie("").copy(maxAge = 0))
+        append("HX-Redirect", "/login")
+    })
 }
 
 private suspend fun CallContext.respondError(message: String) {

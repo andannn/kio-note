@@ -69,12 +69,19 @@ class MockRepositoryImpl : Repository {
         return true
     }
 
+    private val revokedSessions = mutableSetOf<String>()
+
+    override suspend fun deleteSession(sessionId: String) {
+        revokedSessions.add(sessionId)
+    }
+
     override suspend fun createSession(userId: Long): String {
+        revokedSessions.remove("asdf")
         return "asdf"
     }
 
     override suspend fun getSessionById(sessionId: String): Session? {
-        return Session(1)
+        return if (sessionId in revokedSessions) null else Session(1)
     }
 
     override suspend fun createUser(userName: String, password: String): User? {
