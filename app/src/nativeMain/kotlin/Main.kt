@@ -1,13 +1,8 @@
 @file:OptIn(ExperimentalForeignApi::class)
 
-import kio.async.bind
-import kio.async.close
-import kio.async.io.serverSocket
-import kio.async.listen
 import kio.async.poller
 import kio.async.poller.uring.LinuxUring
 import kio.async.runPollEventLoop
-import kio.async.socket
 import kio.note.noteApp
 import kotlinx.cinterop.*
 import kotlinx.coroutines.currentCoroutineContext
@@ -58,9 +53,7 @@ fun main() = runPollEventLoop(LinuxUring()) {
 
         println("Listening to $host:$port")
 
-        val serverSocket = io.serverSocket(serverFd)
-
-        noteApp(serverSocket)
+        noteApp(serverFd)
 
         0
     }
