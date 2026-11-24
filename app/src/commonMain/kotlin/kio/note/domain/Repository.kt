@@ -1,9 +1,14 @@
 package kio.note.domain
 
 import kio.async.AsyncRawSource
+import kio.async.buffered
+import kio.async.poller
 import kio.http.currentLogger
 import kio.http.info
 import kio.http.trace
+import kio.note.util.compressImageSourceToWebp
+import kio.note.util.fileSink
+import kotlinx.coroutines.currentCoroutineContext
 import kio.note.database.NoteBlockEntity
 import kio.note.database.NoteFolderEntity
 import kio.note.database.NoteUserEntity
@@ -42,7 +47,6 @@ import kio.note.database.updateNoteBlock
 import kio.note.util.Config
 import kio.note.util.hashPassword
 import kio.note.util.removeFile
-import kio.note.util.saveFileToPath
 import kio.postgres.conn.PgConnectionPool
 import kio.postgres.conn.useConnection
 import kotlinx.coroutines.flow.Flow
@@ -443,18 +447,33 @@ suspend fun saveImageAndRemoveOldIfNotNull(
     fileSource: AsyncRawSource,
     oldImageUrl: String?
 ): String {
-    val uuid = Uuid.random().toString()
-    val filePath = Path(Config.UPLOAD_DIR, uuid).toString()
+    val fileName = Uuid.random().toString() + ".webp"
+    val filePath = Path(Config.UPLOAD_DIR, fileName).toString()
 
-    currentLogger().trace("Saving image to $filePath")
-    fileSource.saveFileToPath(filePath)
+    currentLogger().trace("Compressing and saving image via FFmpeg pipeline to $filePath")
+    val io = currentCoroutineContext().poller.io
+    val result = io.compressImageSourceToWebp(
+        doSendInput = { sink ->
+            sink.transferFrom(fileSource)
+        },
+        doTransferData = { source ->
+            val finalSink = fileSink(filePath).buffered()
+            try {
+                source.transferTo(finalSink)
+                finalSink.flush()
+            } finally {
+                finalSink.close()
+            }
+        }
+    )
+    result.getOrThrow()
     currentLogger().trace("Save image finished to $filePath")
 
     if (oldImageUrl != null) {
         removeFile(imageUrlToLocalPath(oldImageUrl))
     }
 
-    return "/attachments/$uuid"
+    return "/attachments/$fileName"
 }
 
 fun imageUrlToLocalPath(url: String): String {

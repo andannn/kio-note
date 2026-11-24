@@ -13,6 +13,7 @@ kio-postgres-migration = { module = "io.github.kio-labs:postgres-migration", ver
 kio-io = { module = "io.github.kio-labs:async-io", version.ref = "kio" }
 kio-poller-select = { module = "io.github.kio-labs:poller-jvm-select", version.ref = "kio" }
 kio-poller-uring = { module = "io.github.kio-labs:poller-linux-uring", version.ref = "kio" }
+kio-poller-kqueue = { module = "io.github.kio-labs:poller-kqueue", version.ref = "kio" }
 hash-sha2 = { group = "org.kotlincrypto.hash", name = "sha2", version.ref = "hash" }
 
 [plugins]
