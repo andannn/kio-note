@@ -12,9 +12,24 @@ import kotlinx.coroutines.launch
 actual suspend fun SuspendIo.compressImageSourceToWebp(
     doSendInput: suspend (AsyncSink) -> Unit,
     doTransferData: suspend (AsyncSource) -> Unit
-): Result<Unit> = coroutineScope {
-    val pipeConn =openInMemoryPipe().buffered()
-    launch { doSendInput(pipeConn.sink) }
-    doTransferData(pipeConn.source)
-    Result.success(Unit)
+): Result<Unit> = runCatching {
+    coroutineScope {
+        val pipeConn = openInMemoryPipe().buffered()
+        val writeJob = launch {
+            try {
+                doSendInput(pipeConn.sink)
+            } finally {
+                pipeConn.sink.flush()
+                pipeConn.sink.close()
+            }
+        }
+
+        try {
+            doTransferData(pipeConn.source)
+        } finally {
+            pipeConn.source.close()
+        }
+
+        writeJob.join()
+    }
 }
