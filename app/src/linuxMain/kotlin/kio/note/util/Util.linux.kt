@@ -4,9 +4,7 @@ import kio.async.AsyncRawSink
 import kio.async.AsyncRawSource
 import kio.async.io.asyncRawSink
 import kio.async.io.asyncRawSource
-import kio.async.open
 import kio.async.poller
-import kio.async.unlink
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.toKString
 import kotlinx.coroutines.currentCoroutineContext
