@@ -25,7 +25,9 @@ suspend fun CoroutineScope.noteApp(serverSocket: ServerSocket) {
         context(repo) {
             inject(
                 CallId { Uuid.random().toString() },
-                LoggerInterceptor()
+                DefaultExceptionHandler,
+                LoggerInterceptor(),
+                RespondedBodyEncode,
             ) {
                 notesLogin()
 
